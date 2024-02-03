@@ -9,6 +9,6 @@ data class SignInResult (
 data class UserData(
     val userId: String,
     val username: String?,
-    val pPUrl: String?,
+    val pPUrl: String,
     val email: String?
 )

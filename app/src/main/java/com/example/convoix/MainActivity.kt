@@ -1,6 +1,8 @@
 package com.example.convoix
 
+import android.content.ContentValues.TAG
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -27,6 +29,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.convoix.ui.theme.ConvoixTheme
 import com.google.android.gms.auth.api.identity.Identity
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -73,6 +76,10 @@ class MainActivity : ComponentActivity() {
                             LaunchedEffect(key1 = state.isSignedIn) {
                                 if (state.isSignedIn) {
                                     Toast.makeText(applicationContext, "Signed In Successfully", Toast.LENGTH_SHORT).show()
+                                    val userData = googleAuthUiClient.getSignedInUser()
+                                    userData?.let {
+                                        viewModel.addUserDataToFirestore(it)
+                                    }
                                     viewModel.showAnim()
                                     delay(2000)
                                     navController.navigate("profile")
@@ -100,7 +107,8 @@ class MainActivity : ComponentActivity() {
                                         Toast.makeText(applicationContext, "Signed Out", Toast.LENGTH_SHORT).show()
                                     navController.popBackStack()
                                     }
-                                })
+                                }
+                            )
                         }
                     }
                 }

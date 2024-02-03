@@ -43,7 +43,7 @@ class GoogleAuthUiClient(
                         email = email,
                         userId = uid,
                         username = displayName,
-                        pPUrl = photoUrl?.toString()
+                        pPUrl = photoUrl.toString()
                     )
                 },
                 errmsg = null
@@ -73,7 +73,7 @@ class GoogleAuthUiClient(
             email = email,
             userId = uid,
             username = displayName,
-            pPUrl = photoUrl?.toString()
+            pPUrl = photoUrl.toString().substring(0,photoUrl.toString().length-6)
         )
 
     }
