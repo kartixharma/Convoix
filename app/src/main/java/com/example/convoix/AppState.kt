@@ -8,5 +8,6 @@ data class AppState(
     val pass: String = "",
     val showDialog: Boolean = false,
     val srEmail:String = "",
-    val userData: UserData? = null
+    val userData: UserData? = null,
+    val showSingleChat: Boolean = false
 )

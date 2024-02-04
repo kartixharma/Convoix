@@ -1,4 +1,4 @@
-package com.example.convoix
+package com.example.convoix.screens
 
 import android.os.Build.VERSION.SDK_INT
 import android.widget.Toast
@@ -46,6 +46,8 @@ import coil.ImageLoader
 import coil.compose.rememberAsyncImagePainter
 import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
+import com.example.convoix.AppState
+import com.example.convoix.R
 
 @Composable
 fun SignInScreen(
@@ -92,7 +94,7 @@ fun SignInScreen(
         Column(modifier = Modifier.padding(top = 100.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
             Image(
-                painter = painterResource(id =R.drawable.login_user_name_1),
+                painter = painterResource(id = R.drawable.login_user_name_1),
                 contentDescription = null, modifier = Modifier.size(130.dp), alpha = 0.7f)
         }
     }

@@ -1,4 +1,4 @@
-package com.example.convoix
+package com.example.convoix.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -21,6 +21,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.convoix.AppState
+import com.example.convoix.R
 
 @Composable
 fun SignInScreen1(

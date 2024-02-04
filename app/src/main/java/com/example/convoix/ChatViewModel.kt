@@ -8,11 +8,13 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.google.firebase.firestore.Filter
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.toObject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.util.Calendar
 
 
 class ChatViewModel: ViewModel() {
@@ -21,6 +23,8 @@ class ChatViewModel: ViewModel() {
     val state = _state.asStateFlow()
     private val usersCollection = firestore.collection("users")
     var chats by mutableStateOf<List<ChatData>>(emptyList())
+    var messages by mutableStateOf<List<Message>>(emptyList())
+    var msgListener: ListenerRegistration? = null
     fun setUserData(userData: UserData){
         _state.update { it.copy(userData=userData) }
     }
@@ -30,6 +34,18 @@ class ChatViewModel: ViewModel() {
                 isSignedIn = result.data != null,
                 signInError = result.errmsg
             )
+        }
+    }
+    fun popMessage(chatId: String){
+        messages = emptyList()
+        msgListener = null
+        msgListener = firestore.collection("chats").document(chatId).collection("message")
+            .addSnapshotListener { value, error ->
+                if (value!=null){
+                    messages = value.documents.mapNotNull {
+                        it.toObject(Message::class.java)
+                    }.sortedBy { it.time }.reversed()
+            }
         }
     }
     fun showChats(){
@@ -46,6 +62,17 @@ class ChatViewModel: ViewModel() {
                 }
         }
     }
+
+    fun sendReply(chatId: String, msg: String){
+        val time = Calendar.getInstance().time.toString()
+        val message = Message(
+            senderId = state.value.userData?.userId.toString(),
+            content = msg,
+            time = time
+        )
+        firestore.collection("chats").document(chatId).collection("message").document().set(message)
+    }
+
     fun addChat(email: String){
         firestore.collection("chats").where(Filter.or(
             Filter.and(
@@ -107,6 +134,11 @@ class ChatViewModel: ViewModel() {
                 Log.e(ContentValues.TAG, "Error adding user data to Firestore", e)
             }
     }
+
+    fun showSingleChat(){
+        _state.update { it.copy(showSingleChat = true) }
+    }
+
     fun resetState() {
         _state.update { AppState() }
     }

@@ -1,9 +1,8 @@
-package com.example.convoix
+package com.example.convoix.screens
 
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,14 +23,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import com.example.convoix.AppState
+import com.example.convoix.ChatViewModel
+import com.example.convoix.CustomDialogBox
+import com.example.convoix.UserData
 
 @Composable
-fun ChatScreen(viewModel: ChatViewModel, state: AppState){
+fun ChatScreen(viewModel: ChatViewModel, state: AppState, showSingleChat: (UserData, String) -> Unit){
+    val chats = viewModel.chats
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
@@ -56,26 +57,26 @@ fun ChatScreen(viewModel: ChatViewModel, state: AppState){
             )
         }
         LazyColumn(modifier= Modifier.padding(it)){
-            items(viewModel.chats){
+            items(chats){
                 val chatUser = if(it.user1?.userId!=state.userData?.userId) { it.user1 } else it.user2
-                ChatItem(ppurl = chatUser?.ppurl.toString(), username = chatUser?.username.toString())
+                ChatItem(chatUser!!, showSingleChat = {user, id-> showSingleChat(user, id)}, it.chatId)
             }
         }
     }
 }
 
 @Composable
-fun ChatItem(ppurl: String, username: String){
-    Row(modifier = Modifier.fillMaxWidth().padding(16.dp),
+fun ChatItem(userData: UserData, showSingleChat:(UserData, String)->Unit, chatId:String){
+    Row(modifier = Modifier.fillMaxWidth().padding(16.dp).clickable { showSingleChat(userData, chatId) },
         verticalAlignment = Alignment.CenterVertically) {
         AsyncImage(
-            model = ppurl,
+            model = userData.ppurl,
             contentDescription = "Profile picture",
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .clip(CircleShape)
                 .size(60.dp)
         )
-        Text(modifier = Modifier.padding(16.dp),text = username)
+        Text(modifier = Modifier.padding(16.dp),text = userData.username.toString())
     }
 }

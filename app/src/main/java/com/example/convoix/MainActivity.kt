@@ -19,6 +19,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.convoix.screens.Chat
+import com.example.convoix.screens.ChatScreen
+import com.example.convoix.screens.ProfileScreen
+import com.example.convoix.screens.SignInScreen1
 import com.example.convoix.ui.theme.ConvoixTheme
 import com.google.android.gms.auth.api.identity.Identity
 import kotlinx.coroutines.launch
@@ -42,6 +46,8 @@ class MainActivity : ComponentActivity() {
                     val viewModel = viewModel<ChatViewModel>()
                     val state by viewModel.state.collectAsState()
                     val navController = rememberNavController()
+                    var userData1 : UserData? =null
+                    var chatId: String = ""
                     NavHost(navController = navController,
                         startDestination = "signIn"){
                         composable("signIn"){
@@ -106,7 +112,17 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("main"){
-                            ChatScreen(viewModel, state)
+                            ChatScreen(viewModel, state, showSingleChat = { usr, id ->
+                                userData1=usr
+                                chatId=id
+                                viewModel.popMessage(id)
+                                navController.navigate("chat")
+                            })
+                        }
+                        composable("chat"){
+                            Chat(viewModel.messages, userData1!!, sendReply = {msg, id->
+                                viewModel.sendReply(msg = msg, chatId = id)
+                            },chatId, state)
                         }
                     }
                 }

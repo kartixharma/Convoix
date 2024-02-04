@@ -1,6 +1,5 @@
-package com.example.convoix
+package com.example.convoix.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 
 import androidx.compose.foundation.layout.*
@@ -17,6 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.convoix.UserData
 
 @Composable
 fun ProfileScreen(
