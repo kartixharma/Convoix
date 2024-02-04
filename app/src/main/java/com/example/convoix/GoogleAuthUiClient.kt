@@ -40,10 +40,10 @@ class GoogleAuthUiClient(
             SignInResult(
                 data = user?.run {
                     UserData(
-                        email = email,
+                        email = email.toString(),
                         userId = uid,
                         username = displayName,
-                        pPUrl = photoUrl.toString()
+                        ppurl = photoUrl.toString().substring(0,photoUrl.toString().length-6)
                     )
                 },
                 errmsg = null
@@ -70,10 +70,10 @@ class GoogleAuthUiClient(
 
     fun getSignedInUser(): UserData? = auth.currentUser?.run {
         UserData(
-            email = email,
+            email = email.toString(),
             userId = uid,
             username = displayName,
-            pPUrl = photoUrl.toString().substring(0,photoUrl.toString().length-6)
+            ppurl = photoUrl.toString().substring(0,photoUrl.toString().length-6)
         )
 
     }

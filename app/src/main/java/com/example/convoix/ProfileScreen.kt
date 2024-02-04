@@ -30,9 +30,9 @@ fun ProfileScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (userData?.pPUrl != null) {
+        if (userData?.ppurl != null) {
                 AsyncImage(
-                    model = userData.pPUrl,
+                    model = userData.ppurl,
                     contentDescription = "Profile picture",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.clip(CircleShape).size(120.dp)

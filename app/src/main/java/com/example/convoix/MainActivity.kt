@@ -1,27 +1,19 @@
 package com.example.convoix
 
-import android.content.ContentValues.TAG
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -29,8 +21,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.convoix.ui.theme.ConvoixTheme
 import com.google.android.gms.auth.api.identity.Identity
-import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -49,15 +39,17 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
+                    val viewModel = viewModel<ChatViewModel>()
+                    val state by viewModel.state.collectAsState()
                     val navController = rememberNavController()
                     NavHost(navController = navController,
                         startDestination = "signIn"){
                         composable("signIn"){
-                            val viewModel = viewModel<SignInViewModel>()
-                            val state by viewModel.state.collectAsState()
                             LaunchedEffect(key1 = Unit){
                                 if(googleAuthUiClient.getSignedInUser() != null){
-                                    navController.navigate("profile")
+                                    viewModel.setUserData(googleAuthUiClient.getSignedInUser()!!)
+                                    viewModel.showChats()
+                                    navController.navigate("main")
                                 }
                             }
                             val launcher = rememberLauncherForActivityResult(
@@ -79,11 +71,14 @@ class MainActivity : ComponentActivity() {
                                     val userData = googleAuthUiClient.getSignedInUser()
                                     userData?.let {
                                         viewModel.addUserDataToFirestore(it)
+                                        viewModel.setUserData(userData)
+                                        viewModel.showChats()
                                     }
                                     viewModel.showAnim()
-                                    delay(2000)
-                                    navController.navigate("profile")
+                                    // delay(2000)
+                                    navController.navigate("main")
                                     viewModel.resetState()
+                                    viewModel.setUserData(userData!!)
                                 }
                             }
                             SignInScreen1(state = state,
@@ -109,6 +104,9 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             )
+                        }
+                        composable("main"){
+                            ChatScreen(viewModel, state)
                         }
                     }
                 }
