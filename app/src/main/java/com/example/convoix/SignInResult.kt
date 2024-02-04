@@ -1,5 +1,7 @@
 package com.example.convoix
 
+import com.google.firebase.Timestamp
+
 data class SignInResult (
     val data: UserData?,
     val errmsg: String?
@@ -12,6 +14,7 @@ data class UserData (
 )
 data class ChatData (
     val chatId: String = "",
+    val last: Message? = null,
     val user1: UserData? = null,
     val user2: UserData? = null
 )
@@ -19,6 +22,5 @@ data class ChatData (
 data class Message(
     val senderId: String? ="",
     val content: String?="",
-    val time: String?=""
+    val time: Timestamp? = Timestamp.now()
 )
-

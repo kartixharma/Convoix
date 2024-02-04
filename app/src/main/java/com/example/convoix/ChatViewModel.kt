@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.Filter
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
@@ -25,6 +26,7 @@ class ChatViewModel: ViewModel() {
     var chats by mutableStateOf<List<ChatData>>(emptyList())
     var messages by mutableStateOf<List<Message>>(emptyList())
     var msgListener: ListenerRegistration? = null
+
     fun setUserData(userData: UserData){
         _state.update { it.copy(userData=userData) }
     }
@@ -62,15 +64,21 @@ class ChatViewModel: ViewModel() {
                 }
         }
     }
-
     fun sendReply(chatId: String, msg: String){
-        val time = Calendar.getInstance().time.toString()
+        val time = Calendar.getInstance().time
         val message = Message(
             senderId = state.value.userData?.userId.toString(),
             content = msg,
-            time = time
+            time = Timestamp(time)
         )
         firestore.collection("chats").document(chatId).collection("message").document().set(message)
+        firestore.collection("chats").document(chatId).update("last", message)
+            .addOnSuccessListener {
+                Log.d("Firestore Update", "Last message updated successfully")
+            }
+            .addOnFailureListener { e ->
+                Log.e("Firestore Update", "Error updating last message", e)
+            }
     }
 
     fun addChat(email: String){
@@ -94,6 +102,11 @@ class ChatViewModel: ViewModel() {
                         val id = firestore.collection("chats").document().id
                         val chat = ChatData(
                             chatId = id,
+                            Message(
+                                senderId = "",
+                                content = "",
+                                time = null
+                            ),
                             UserData(
                                 userId = state.value.userData?.userId.toString(),
                                 username = state.value.userData?.username,
@@ -163,5 +176,9 @@ class ChatViewModel: ViewModel() {
     }
     fun setSrEmail(email: String){
         _state.update { it.copy( srEmail = email) }
+    }
+
+    fun setchatUser(usr: UserData, id: String) {
+        _state.update { it.copy( User2 = usr, chatId = id ) }
     }
 }

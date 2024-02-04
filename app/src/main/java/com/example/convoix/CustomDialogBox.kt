@@ -34,7 +34,7 @@ fun CustomDialogBox(state: AppState, hideDialog: () ->Unit, addChat:()->Unit, se
             defaultElevation = 6.dp),
             shape = RoundedCornerShape(15.dp),
             modifier = Modifier.fillMaxWidth(0.90f),
-            border = BorderStroke(1.dp, Color.Gray)
+            border = BorderStroke(0.3.dp, Color.Gray)
         ) {
             Column( modifier = Modifier
                 .padding(15.dp),

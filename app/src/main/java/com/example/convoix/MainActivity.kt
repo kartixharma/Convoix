@@ -13,6 +13,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -21,6 +24,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.convoix.screens.Chat
 import com.example.convoix.screens.ChatScreen
+import com.example.convoix.screens.MainScreen
 import com.example.convoix.screens.ProfileScreen
 import com.example.convoix.screens.SignInScreen1
 import com.example.convoix.ui.theme.ConvoixTheme
@@ -46,8 +50,6 @@ class MainActivity : ComponentActivity() {
                     val viewModel = viewModel<ChatViewModel>()
                     val state by viewModel.state.collectAsState()
                     val navController = rememberNavController()
-                    var userData1 : UserData? =null
-                    var chatId: String = ""
                     NavHost(navController = navController,
                         startDestination = "signIn"){
                         composable("signIn"){
@@ -100,29 +102,24 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
-                        composable("profile"){
-                            ProfileScreen(userData = googleAuthUiClient.getSignedInUser(),
-                                onSignOut = {
-                                    lifecycleScope.launch {
-                                        googleAuthUiClient.signOut()
-                                        Toast.makeText(applicationContext, "Signed Out", Toast.LENGTH_SHORT).show()
-                                    navController.popBackStack()
-                                    }
-                                }
-                            )
-                        }
                         composable("main"){
-                            ChatScreen(viewModel, state, showSingleChat = { usr, id ->
-                                userData1=usr
-                                chatId=id
+                            MainScreen(viewModel, state, showSingleChat = { usr, id ->
+                                viewModel.setchatUser(usr, id)
                                 viewModel.popMessage(id)
                                 navController.navigate("chat")
+                            },
+                                onSignOut = {
+                                lifecycleScope.launch {
+                                    googleAuthUiClient.signOut()
+                                    Toast.makeText(applicationContext, "Signed Out", Toast.LENGTH_SHORT).show()
+                                    navController.popBackStack()
+                                }
                             })
                         }
                         composable("chat"){
-                            Chat(viewModel.messages, userData1!!, sendReply = {msg, id->
+                            Chat(viewModel.messages, state.User2!!, sendReply = {msg, id->
                                 viewModel.sendReply(msg = msg, chatId = id)
-                            },chatId, state)
+                            },state.chatId, state, onBack = {navController.navigate("main")})
                         }
                     }
                 }
