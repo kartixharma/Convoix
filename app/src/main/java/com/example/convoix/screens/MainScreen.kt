@@ -81,12 +81,12 @@ fun MainScreen(viewModel: ChatViewModel, state: AppState, showSingleChat: (UserD
     ){it->
         NavHost(navController = navController,
             startDestination = "Chats",
-            modifier = Modifier.padding(it)){
+            modifier = Modifier.padding(it)) {
             composable("Chats"){
                 ChatScreen(viewModel = viewModel, state = state, showSingleChat = {user, id-> showSingleChat(user, id)} )
             }
             composable("Profile"){
-                ProfileScreen(userData = state.userData, onSignOut = onSignOut)
+                ProfileScreen(viewModel, state, onSignOut = onSignOut)
             }
             composable("Settings"){
             }

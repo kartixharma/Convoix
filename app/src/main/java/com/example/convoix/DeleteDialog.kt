@@ -20,14 +20,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.skydoves.cloudy.Cloudy
 
 @Composable
-fun CustomDialogBox(state: AppState, hideDialog: () ->Unit, addChat:()->Unit, setEmail:(String)->Unit){
+fun DeleteDialog(hideDialog: () ->Unit, deleteChat:()->Unit){
     Dialog(onDismissRequest = hideDialog,
-        properties = DialogProperties(
+            properties = DialogProperties(
             usePlatformDefaultWidth = false
         )
     ) {
@@ -35,27 +36,28 @@ fun CustomDialogBox(state: AppState, hideDialog: () ->Unit, addChat:()->Unit, se
             defaultElevation = 6.dp),
             shape = RoundedCornerShape(15.dp),
             modifier = Modifier.fillMaxWidth(0.90f),
-            border = BorderStroke(0.3.dp, Color.Gray)
+            colors = CardDefaults.cardColors(MaterialTheme.colorScheme.background.copy(alpha = 1f))
         ) {
             Column( modifier = Modifier
                 .padding(15.dp),
-                verticalArrangement = Arrangement.spacedBy(25.dp)) {
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "Enter Email ID",
+                    text = "Are you sure?",
                     style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
                 )
-                OutlinedTextField(label = { Text(text = "Enter Email" )}, modifier = Modifier.align(Alignment.CenterHorizontally),
-                    value = state.srEmail,
-                    onValueChange = { setEmail(it) } ,
-                    shape = RoundedCornerShape(20.dp))
+                Text(
+                    text = "This will delete all your chats!",
+                    fontSize = 20.sp,
+                    color= MaterialTheme.colorScheme.error
+                )
                 Row {
-                    TextButton(onClick = addChat) {
-                        Text(text = "Add", style = MaterialTheme.typography.titleLarge, color = Color(0xFF09a129))
+                    TextButton(onClick = deleteChat ) {
+                        Text(text = "Delete", style = MaterialTheme.typography.titleLarge, color= MaterialTheme.colorScheme.error)
                     }
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = hideDialog) {
-                        Text(text = "Cancel", style = MaterialTheme.typography.titleLarge, color= MaterialTheme.colorScheme.error)
+                        Text(text = "Cancel", style = MaterialTheme.typography.titleLarge)
                     }
                 }
             }

@@ -5,6 +5,14 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        create("release") {
+            storeFile = file("C:\\Users\\karti\\AndroidStudioProjects\\keystore.jks")
+            storePassword = "proodev"
+            keyAlias = "key0"
+            keyPassword = "proodev"
+        }
+    }
     namespace = "com.example.convoix"
     compileSdk = 34
 
@@ -28,6 +36,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
@@ -80,4 +89,10 @@ dependencies {
     implementation("io.coil-kt:coil-gif:2.5.0")
     //Icons
     implementation("androidx.compose.material:material-icons-extended:1.6.0")
+    //Insets
+    implementation("com.google.accompanist:accompanist-insets:0.20.0")
+    // cloudy
+    implementation("com.github.skydoves:cloudy:0.1.2")
+
+
 }

@@ -1,93 +1,237 @@
 package com.example.convoix.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Divider
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.convoix.AppState
 import com.example.convoix.ChatData
 import com.example.convoix.ChatViewModel
 import com.example.convoix.CustomDialogBox
+import com.example.convoix.DeleteDialog
 import com.example.convoix.UserData
+import com.skydoves.cloudy.Cloudy
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @Composable
 fun ChatScreen(viewModel: ChatViewModel, state: AppState, showSingleChat: (UserData, String) -> Unit){
     val chats = viewModel.chats
+    var isSelected by remember {
+        mutableStateOf(false)
+    }
+    var dltChatId by remember {
+        mutableStateOf("")
+    }
+    var showDialog by remember {
+        mutableStateOf(false)
+    }
+    var selectedItems = mutableMapOf<Int, Boolean>()
+    BackHandler {
+        isSelected=false
+        selectedItems.clear()
+    }
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {viewModel.showDialog()},
                 shape = RoundedCornerShape(50.dp),
-                modifier = Modifier.size(70.dp),
                 containerColor = colorScheme.inversePrimary
             ){
-                Icon(Icons.Filled.Add, contentDescription = "ADD", Modifier.size(35.dp), tint = Color.White)
+                Icon(Icons.Filled.Add, contentDescription = "ADD", tint = Color.White)
             }
         }
-
     ){it->
-        AnimatedVisibility(state.showDialog){
-            CustomDialogBox(
-                state = state,
-                hideDialog = {viewModel.hideDialog()},
-                addChat = { viewModel.addChat(state.srEmail)
-                          viewModel.hideDialog()
-                          viewModel.setSrEmail("")} ,
-                setEmail = {viewModel.setSrEmail(it)}
+        AnimatedVisibility(showDialog) {
+            DeleteDialog(
+                hideDialog = { showDialog = !showDialog
+                    selectedItems.clear()},
+                deleteChat = { viewModel.deleteChat(dltChatId)
+                    showDialog = !showDialog
+                    selectedItems.clear()}
             )
         }
-        LazyColumn(modifier= Modifier.padding(it)){
-            items(chats){
-                val chatUser = if(it.user1?.userId!=state.userData?.userId) { it.user1 } else it.user2
-                ChatItem(chatUser!!, showSingleChat = {user, id-> showSingleChat(user, id)}, it)
+        AnimatedVisibility(state.showDialog){
+                CustomDialogBox(
+                    state = state,
+                    hideDialog = {viewModel.hideDialog()},
+                    addChat = { viewModel.addChat(state.srEmail)
+                        viewModel.hideDialog()
+                        viewModel.setSrEmail("")} ,
+                    setEmail = {viewModel.setSrEmail(it)}
+                )
+        }
+        Column(modifier =Modifier) { //.background(colorScheme.primaryContainer)
+            Box {
+                this@Column.AnimatedVisibility(
+                    isSelected,
+                    enter = slideInVertically(),
+                    exit = slideOutVertically()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth(0.95f)
+                    ) {
+                        IconButton(modifier = Modifier.padding(12.dp),
+                            onClick = {
+                                isSelected = false
+                                selectedItems.clear()
+                            }) {
+                            Icon(
+                                imageVector = Icons.Filled.ArrowBackIosNew,
+                                contentDescription = null
+                            )
+                        }
+                        IconButton(onClick = {
+                            showDialog=true
+                            isSelected = false
+                        }) {
+                            Icon(imageVector = Icons.Filled.Delete, contentDescription = null)
+                        }
+                    }
+                }
+                if (!isSelected) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth(0.95f)
+                    ) {
+                        Text(
+                            text = "Chats",
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        IconButton(onClick = { }) {
+                            Icon(
+                                modifier = Modifier.scale(1.3f),
+                                imageVector = Icons.Filled.Search,
+                                contentDescription = null
+                            )
+                        }
+                    }
+                }
+            }
+            LazyColumn(modifier= Modifier
+                .padding()
+                .background(colorScheme.background, RoundedCornerShape(30.dp, 30.dp))){
+                items(chats){
+                        val chatUser = if(it.user1?.userId!=state.userData?.userId) { it.user1 } else it.user2
+                        ChatItem(selectedItems[chats.indexOf(it)], chatUser!!, showSingleChat = { user, id-> showSingleChat(user, id)}, it, showRow = { id->
+                            selectedItems[chats.indexOf(it)] = true
+                            dltChatId = id
+                            isSelected = true
+                        })
+                }
             }
         }
     }
 }
-
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ChatItem(userData: UserData, showSingleChat:(UserData, String)->Unit, chat: ChatData){
-    Row(modifier = Modifier
-        .fillMaxWidth()
-        .clickable { showSingleChat(userData, chat.chatId) },
-        verticalAlignment = Alignment.CenterVertically) {
+fun ChatItem(isSelected: Boolean?, userData: UserData, showSingleChat: (UserData, String) -> Unit, chat: ChatData, showRow:(String)->Unit) {
+    val formatter = remember {
+        SimpleDateFormat(("hh:mm a"), Locale.getDefault())
+    }
+    val color = if(isSelected==null || isSelected==false) colorScheme.background else colorScheme.primaryContainer
+    Row(
+        modifier = Modifier
+            .background(color)
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = { showSingleChat(userData, chat.chatId) },
+                onLongClick = { showRow(chat.chatId) })
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         AsyncImage(
             model = userData.ppurl,
             contentDescription = "Profile picture",
             contentScale = ContentScale.Crop,
             modifier = Modifier
-                .padding(16.dp)
                 .clip(CircleShape)
                 .size(60.dp)
         )
-        Column {
-            Text(modifier = Modifier,text = userData.username.toString())
-            Text(modifier = Modifier.padding(end = 100.dp), text = chat.last?.content.toString(), maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.Gray)
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = userData.username.orEmpty(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            AnimatedVisibility(chat.last?.time!=null) {
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = chat.last?.content.orEmpty(),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = if(chat.last?.time.toString()!="null") formatter.format(chat.last?.time?.toDate()!!) else "",
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                }
+            }
+
         }
     }
-    Divider(modifier = Modifier.padding(horizontal = 10.dp))
 }

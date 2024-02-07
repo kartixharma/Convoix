@@ -18,7 +18,6 @@ data class ChatData (
     val user1: UserData? = null,
     val user2: UserData? = null
 )
-
 data class Message(
     val senderId: String? ="",
     val content: String?="",

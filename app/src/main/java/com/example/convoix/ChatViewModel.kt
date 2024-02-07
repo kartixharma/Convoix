@@ -24,7 +24,7 @@ class ChatViewModel: ViewModel() {
     val state = _state.asStateFlow()
     private val usersCollection = firestore.collection("users")
     var chats by mutableStateOf<List<ChatData>>(emptyList())
-    var messages by mutableStateOf<List<Message>>(emptyList())
+    var messages by mutableStateOf<List<Message>>(listOf())
     var msgListener: ListenerRegistration? = null
 
     fun setUserData(userData: UserData){
@@ -38,9 +38,8 @@ class ChatViewModel: ViewModel() {
             )
         }
     }
-    fun popMessage(chatId: String){
-        messages = emptyList()
-        msgListener = null
+    fun popMessage(chatId: String) {
+        msgListener?.remove()
         msgListener = firestore.collection("chats").document(chatId).collection("message")
             .addSnapshotListener { value, error ->
                 if (value!=null){
@@ -49,6 +48,10 @@ class ChatViewModel: ViewModel() {
                     }.sortedBy { it.time }.reversed()
             }
         }
+    }
+    fun dePopMsg(){
+        messages = listOf()
+        msgListener?.remove()
     }
     fun showChats(){
         firestore.collection("chats").where(
@@ -95,7 +98,7 @@ class ChatViewModel: ViewModel() {
             if(it.isEmpty){
                 usersCollection.whereEqualTo("email", email).get().addOnSuccessListener{
                     if(it.isEmpty){
-                            println("failed")
+                        println("failed")
                     }
                     else{
                         val chatPartner = it.toObjects(UserData::class.java).firstOrNull()
@@ -126,7 +129,7 @@ class ChatViewModel: ViewModel() {
                     println("failed..")
                 }
             }
-            else{
+            else {
 
             }
         }
@@ -145,6 +148,27 @@ class ChatViewModel: ViewModel() {
             }
             .addOnFailureListener { e ->
                 Log.e(ContentValues.TAG, "Error adding user data to Firestore", e)
+            }
+    }
+
+    fun deleteChat(chatId: String) {
+        firestore.collection("chats").document(chatId).delete()
+        firestore.collection("chats").document(chatId).collection("message").get()
+            .addOnSuccessListener { querySnapshot ->
+                // Iterate through all documents and delete each one
+                for (document in querySnapshot.documents) {
+                    document.reference.delete()
+                        .addOnSuccessListener {
+                            println("Document deleted successfully.")
+                        }
+                        .addOnFailureListener { e ->
+
+                            println("Error deleting document: $e")
+                        }
+                }
+            }
+            .addOnFailureListener { e ->
+                println("Error getting documents: $e")
             }
     }
 
@@ -181,4 +205,5 @@ class ChatViewModel: ViewModel() {
     fun setchatUser(usr: UserData, id: String) {
         _state.update { it.copy( User2 = usr, chatId = id ) }
     }
+
 }

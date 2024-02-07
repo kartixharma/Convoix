@@ -5,8 +5,13 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -25,6 +30,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.convoix.screens.Chat
 import com.example.convoix.screens.ChatScreen
 import com.example.convoix.screens.MainScreen
+import com.example.convoix.screens.OtherProfile
 import com.example.convoix.screens.ProfileScreen
 import com.example.convoix.screens.SignInScreen1
 import com.example.convoix.ui.theme.ConvoixTheme
@@ -40,6 +46,7 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
             ConvoixTheme {
                 // A surface container using the 'background' color from the theme
@@ -112,15 +119,27 @@ class MainActivity : ComponentActivity() {
                                 lifecycleScope.launch {
                                     googleAuthUiClient.signOut()
                                     Toast.makeText(applicationContext, "Signed Out", Toast.LENGTH_SHORT).show()
-                                    navController.popBackStack()
+                                    navController.navigate("signIn")
                                 }
                             })
                         }
-                        composable("chat"){
-                            Chat(viewModel.messages, state.User2!!, sendReply = {msg, id->
+                        composable("chat", enterTransition = { slideInHorizontally(
+                            initialOffsetX = { fullWidth -> fullWidth },
+                            animationSpec = tween(200)
+                        )}, exitTransition = { slideOutHorizontally(
+                            targetOffsetX = { fullWidth -> fullWidth },
+                            animationSpec = tween(200)
+                        )}){
+                            Chat(navController, viewModel, viewModel.messages, state.User2!!, sendReply = {msg, id->
                                 viewModel.sendReply(msg = msg, chatId = id)
-                            },state.chatId, state, onBack = {navController.navigate("main")})
+                            },state.chatId, state, onBack = {
+                                navController.popBackStack()
+                                viewModel.dePopMsg()})
                         }
+                        composable("otherprofile"){
+                            OtherProfile(state.User2!!)
+                        }
+
                     }
                 }
             }
