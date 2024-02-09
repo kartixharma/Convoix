@@ -8,7 +8,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -18,9 +17,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -29,7 +25,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.convoix.screens.Chat
 import com.example.convoix.screens.ChatScreen
-import com.example.convoix.screens.MainScreen
 import com.example.convoix.screens.OtherProfile
 import com.example.convoix.screens.ProfileScreen
 import com.example.convoix.screens.SignInScreen1
@@ -44,12 +39,12 @@ class MainActivity : ComponentActivity() {
             oneTapClient = Identity.getSignInClient(applicationContext)
         )
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             ConvoixTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -58,15 +53,20 @@ class MainActivity : ComponentActivity() {
                     val state by viewModel.state.collectAsState()
                     val navController = rememberNavController()
                     NavHost(navController = navController,
-                        startDestination = "signIn"){
-                        composable("signIn"){
+                        startDestination = "start"){
+                        composable("start"){
                             LaunchedEffect(key1 = Unit){
                                 if(googleAuthUiClient.getSignedInUser() != null){
                                     viewModel.setUserData(googleAuthUiClient.getSignedInUser()!!)
                                     viewModel.showChats()
-                                    navController.navigate("main")
+                                    navController.navigate("chats")
+                                }
+                                else{
+                                    navController.navigate("signIn")
                                 }
                             }
+                        }
+                        composable("signIn"){
                             val launcher = rememberLauncherForActivityResult(
                                 contract = ActivityResultContracts.StartIntentSenderForResult(),
                                 onResult = { result ->
@@ -91,7 +91,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                     viewModel.showAnim()
                                     // delay(2000)
-                                    navController.navigate("main")
+                                    navController.navigate("chats")
                                     viewModel.resetState()
                                     viewModel.setUserData(userData!!)
                                 }
@@ -109,18 +109,11 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
-                        composable("main"){
-                            MainScreen(viewModel, state, showSingleChat = { usr, id ->
+                        composable("chats"){
+                            ChatScreen(navController, viewModel, state, showSingleChat = { usr, id ->
                                 viewModel.setchatUser(usr, id)
                                 viewModel.popMessage(id)
                                 navController.navigate("chat")
-                            },
-                                onSignOut = {
-                                lifecycleScope.launch {
-                                    googleAuthUiClient.signOut()
-                                    Toast.makeText(applicationContext, "Signed Out", Toast.LENGTH_SHORT).show()
-                                    navController.navigate("signIn")
-                                }
                             })
                         }
                         composable("chat", enterTransition = { slideInHorizontally(
@@ -139,7 +132,16 @@ class MainActivity : ComponentActivity() {
                         composable("otherprofile"){
                             OtherProfile(state.User2!!)
                         }
+                        composable("profile"){
+                            ProfileScreen(viewModel = viewModel, state = state, onSignOut = {
+                                lifecycleScope.launch {
+                                    googleAuthUiClient.signOut()
+                                    Toast.makeText(applicationContext, "Signed Out", Toast.LENGTH_SHORT).show()
+                                    navController.navigate("signIn")
+                               }
+                            })
 
+                        }
                     }
                 }
             }

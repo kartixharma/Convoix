@@ -141,7 +141,7 @@ fun SignInScreen(
                     .height(50.dp),
                     shape =  RoundedCornerShape(20.dp),
                     onClick = onSignInCLick ) {
-                        Text(text = "Sign Up", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                    Text(text = "Sign Up", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                 }
             }
         }

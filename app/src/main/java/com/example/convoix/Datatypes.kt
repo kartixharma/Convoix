@@ -19,7 +19,14 @@ data class ChatData (
     val user2: UserData? = null
 )
 data class Message(
-    val senderId: String? ="",
+    val msgId: String = "",
+    val senderId: String? = "",
+    val reaction: String? = "",
+    val messageType: MsgType = MsgType.TXT,
     val content: String?="",
     val time: Timestamp? = Timestamp.now()
 )
+
+enum class MsgType{
+    TXT, IMG
+}

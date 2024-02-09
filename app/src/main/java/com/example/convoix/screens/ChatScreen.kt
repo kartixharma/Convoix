@@ -2,13 +2,10 @@ package com.example.convoix.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,8 +26,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,10 +38,7 @@ import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -67,7 +64,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Composable
-fun ChatScreen(viewModel: ChatViewModel, state: AppState, showSingleChat: (UserData, String) -> Unit){
+fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: AppState, showSingleChat: (UserData, String) -> Unit){
     val chats = viewModel.chats
     var isSelected by remember {
         mutableStateOf(false)
@@ -78,6 +75,7 @@ fun ChatScreen(viewModel: ChatViewModel, state: AppState, showSingleChat: (UserD
     var showDialog by remember {
         mutableStateOf(false)
     }
+    var expanded by remember { mutableStateOf(false) }
     var selectedItems = mutableMapOf<Int, Boolean>()
     BackHandler {
         isSelected=false
@@ -113,7 +111,7 @@ fun ChatScreen(viewModel: ChatViewModel, state: AppState, showSingleChat: (UserD
                     setEmail = {viewModel.setSrEmail(it)}
                 )
         }
-        Column(modifier =Modifier) { //.background(colorScheme.primaryContainer)
+        Column(modifier = Modifier.padding(top = 36.dp)) { //.background(colorScheme.primaryContainer)
             Box {
                 this@Column.AnimatedVisibility(
                     isSelected,
@@ -146,15 +144,16 @@ fun ChatScreen(viewModel: ChatViewModel, state: AppState, showSingleChat: (UserD
                 if (!isSelected) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.Center,
                         modifier = Modifier.fillMaxWidth(0.95f)
                     ) {
                         Text(
                             text = "Chats",
                             modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.headlineLarge,
+                            style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.SemiBold
                         )
+                        Spacer(modifier = Modifier.weight(1f))
                         IconButton(onClick = { }) {
                             Icon(
                                 modifier = Modifier.scale(1.3f),
@@ -162,9 +161,45 @@ fun ChatScreen(viewModel: ChatViewModel, state: AppState, showSingleChat: (UserD
                                 contentDescription = null
                             )
                         }
+                        Column {
+                            IconButton(onClick = { expanded=true }) {
+                                Icon(
+                                    modifier = Modifier.scale(1.3f),
+                                    imageVector = Icons.Filled.MoreVert,
+                                    contentDescription = null
+                                )
+                            }
+                            MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(16.dp))) {
+                                DropdownMenu(
+                                    expanded = expanded,
+                                    onDismissRequest = { expanded = false },
+                                    modifier = Modifier
+                                ) {
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                text = "Profile",
+                                                style = MaterialTheme.typography.bodyLarge
+                                            )
+                                        },
+                                        onClick = { navController.navigate("profile") }
+                                    )
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                text = "Settings",
+                                                style = MaterialTheme.typography.bodyLarge
+                                            )
+                                        },
+                                        onClick = {}
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
+
             LazyColumn(modifier= Modifier
                 .padding()
                 .background(colorScheme.background, RoundedCornerShape(30.dp, 30.dp))){
@@ -186,7 +221,7 @@ fun ChatItem(isSelected: Boolean?, userData: UserData, showSingleChat: (UserData
     val formatter = remember {
         SimpleDateFormat(("hh:mm a"), Locale.getDefault())
     }
-    val color = if(isSelected==null || isSelected==false) colorScheme.background else colorScheme.primaryContainer
+    val color = if(isSelected==null || isSelected==false) Color.Transparent else colorScheme.primaryContainer
     Row(
         modifier = Modifier
             .background(color)
@@ -217,7 +252,7 @@ fun ChatItem(isSelected: Boolean?, userData: UserData, showSingleChat: (UserData
             )
             AnimatedVisibility(chat.last?.time!=null) {
                 Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    Text(
+                    Text( modifier = Modifier.width(200.dp),
                         text = chat.last?.content.orEmpty(),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -231,7 +266,6 @@ fun ChatItem(isSelected: Boolean?, userData: UserData, showSingleChat: (UserData
                     )
                 }
             }
-
         }
     }
 }

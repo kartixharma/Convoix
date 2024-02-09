@@ -68,13 +68,17 @@ class ChatViewModel: ViewModel() {
         }
     }
     fun sendReply(chatId: String, msg: String){
+        val id = firestore.collection("chats").document().collection("message").document().id
         val time = Calendar.getInstance().time
         val message = Message(
+            reaction = "",
+            msgId = id,
+            messageType = MsgType.TXT,
             senderId = state.value.userData?.userId.toString(),
             content = msg,
             time = Timestamp(time)
         )
-        firestore.collection("chats").document(chatId).collection("message").document().set(message)
+        firestore.collection("chats").document(chatId).collection("message").document(id).set(message)
         firestore.collection("chats").document(chatId).update("last", message)
             .addOnSuccessListener {
                 Log.d("Firestore Update", "Last message updated successfully")
@@ -171,9 +175,11 @@ class ChatViewModel: ViewModel() {
                 println("Error getting documents: $e")
             }
     }
-
-    fun showSingleChat(){
-        _state.update { it.copy(showSingleChat = true) }
+    fun Reaction(str: String, chatId: String, msgId: String){
+        firestore.collection("chats").document(chatId).collection("message").document(msgId).update("reaction", str)
+    }
+    fun dltMsg(msgId: String, chatId: String){
+        firestore.collection("chats").document(chatId).collection("message").document(msgId).delete()
     }
 
     fun resetState() {
@@ -205,5 +211,8 @@ class ChatViewModel: ViewModel() {
     fun setchatUser(usr: UserData, id: String) {
         _state.update { it.copy( User2 = usr, chatId = id ) }
     }
+
+
+
 
 }

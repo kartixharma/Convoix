@@ -36,7 +36,7 @@ fun DeleteDialog(hideDialog: () ->Unit, deleteChat:()->Unit){
             defaultElevation = 6.dp),
             shape = RoundedCornerShape(15.dp),
             modifier = Modifier.fillMaxWidth(0.90f),
-            colors = CardDefaults.cardColors(MaterialTheme.colorScheme.background.copy(alpha = 1f))
+            colors = CardDefaults.cardColors(MaterialTheme.colorScheme.background)
         ) {
             Column( modifier = Modifier
                 .padding(15.dp),
