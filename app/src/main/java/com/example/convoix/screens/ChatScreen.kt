@@ -150,8 +150,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                         Text(
                             text = "Chats",
                             modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.SemiBold
+                            style = MaterialTheme.typography.headlineMedium
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         IconButton(onClick = { }) {
@@ -169,7 +168,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                                     contentDescription = null
                                 )
                             }
-                            MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(16.dp))) {
+                            MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(12.dp))) {
                                 DropdownMenu(
                                     expanded = expanded,
                                     onDismissRequest = { expanded = false },
@@ -182,7 +181,8 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                                                 style = MaterialTheme.typography.bodyLarge
                                             )
                                         },
-                                        onClick = { navController.navigate("profile") }
+                                        onClick = { navController.navigate("profile")
+                                        expanded=false }
                                     )
                                     DropdownMenuItem(
                                         text = {
@@ -221,7 +221,7 @@ fun ChatItem(isSelected: Boolean?, userData: UserData, showSingleChat: (UserData
     val formatter = remember {
         SimpleDateFormat(("hh:mm a"), Locale.getDefault())
     }
-    val color = if(isSelected==null || isSelected==false) Color.Transparent else colorScheme.primaryContainer
+    val color = if(isSelected==null || isSelected==false) Color.Transparent else colorScheme.secondaryContainer
     Row(
         modifier = Modifier
             .background(color)

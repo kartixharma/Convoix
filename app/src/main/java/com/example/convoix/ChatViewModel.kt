@@ -15,6 +15,7 @@ import com.google.firebase.firestore.toObject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.tasks.await
 import java.util.Calendar
 
 
@@ -159,14 +160,12 @@ class ChatViewModel: ViewModel() {
         firestore.collection("chats").document(chatId).delete()
         firestore.collection("chats").document(chatId).collection("message").get()
             .addOnSuccessListener { querySnapshot ->
-                // Iterate through all documents and delete each one
                 for (document in querySnapshot.documents) {
                     document.reference.delete()
                         .addOnSuccessListener {
                             println("Document deleted successfully.")
                         }
                         .addOnFailureListener { e ->
-
                             println("Error deleting document: $e")
                         }
                 }
@@ -178,10 +177,11 @@ class ChatViewModel: ViewModel() {
     fun Reaction(str: String, chatId: String, msgId: String){
         firestore.collection("chats").document(chatId).collection("message").document(msgId).update("reaction", str)
     }
-    fun dltMsg(msgId: String, chatId: String){
-        firestore.collection("chats").document(chatId).collection("message").document(msgId).delete()
+    fun deleteMsg(msgIds: List<String>, chatId: String){
+        for (id in msgIds){
+            firestore.collection("chats").document(chatId).collection("message").document(id).delete()
+        }
     }
-
     fun resetState() {
         _state.update { AppState() }
     }

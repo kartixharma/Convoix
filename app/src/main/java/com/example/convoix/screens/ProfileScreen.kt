@@ -3,6 +3,7 @@ package com.example.convoix.screens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -10,11 +11,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -32,7 +38,7 @@ fun ProfileScreen(
     onSignOut: () -> Unit
 ) {
     val userData = state.userData
-    Image(painter = painterResource(id = R.drawable.untitled_1), contentDescription = null, contentScale = ContentScale.Crop)
+    Image(painter = painterResource(id = R.drawable.untitled_1), contentDescription = null, contentScale = ContentScale.Crop, colorFilter = if(!isSystemInDarkTheme()) ColorFilter.tint(MaterialTheme.colorScheme.primary) else null)
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -53,7 +59,9 @@ fun ProfileScreen(
             }
             Spacer(modifier = Modifier.height(16.dp))
             Text(text = userData?.username.toString(),
-                modifier = Modifier.background(Color.DarkGray, RoundedCornerShape(12.dp)).padding(12.dp),
+                modifier = Modifier
+                    .background(Color.DarkGray, RoundedCornerShape(12.dp))
+                    .padding(12.dp),
                 style = MaterialTheme.typography.headlineSmall,
                 color = Color.White
             )

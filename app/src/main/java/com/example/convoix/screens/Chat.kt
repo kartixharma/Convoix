@@ -6,6 +6,8 @@ import android.content.Context.CLIPBOARD_SERVICE
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +31,8 @@ import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -40,9 +45,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -66,7 +73,9 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.convoix.AppState
 import com.example.convoix.ChatViewModel
+import com.example.convoix.DeleteDialog
 import com.example.convoix.Message
+import com.example.convoix.MsgDeleteDialog
 import com.example.convoix.UserData
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -77,42 +86,115 @@ fun Chat(navController: NavController, viewModel: ChatViewModel, messages: List<
     var reply by rememberSaveable {
         mutableStateOf("")
     }
+    var selectionMode by remember {
+        mutableStateOf(false)
+    }
+    val selectedItem = remember {
+        mutableStateListOf<String>()
+    }
+    var showDialog by remember {
+        mutableStateOf(false)
+    }
+    var expanded by remember { mutableStateOf(false) }
     LaunchedEffect(key1 = Unit){
         viewModel.popMessage(state.chatId)
     }
     BackHandler {
-        navController.popBackStack()
-        viewModel.dePopMsg()
+        if(selectionMode){
+            selectionMode = false
+            selectedItem.clear()
+        }
+        else{
+            navController.popBackStack()
+            viewModel.dePopMsg()
+            expanded=false
+        }
     }
-
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Row(
-                        modifier = Modifier
-                            .clickable { navController.navigate("otherprofile") }
-                            .fillMaxWidth()
-                            .padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        AsyncImage(
-                            model = userData.ppurl,
-                            contentDescription = "Profile picture",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .size(40.dp)
-                        )
-                        Text(modifier = Modifier.padding(16.dp),text = userData.username.toString())
-                    }
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                        title = {
+                            if(!selectionMode){
+                                Row(
+                                    modifier = Modifier
+                                        .clickable { navController.navigate("otherprofile") }
+                                        .fillMaxWidth()
+                                        .padding(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    AsyncImage(
+                                        model = userData.ppurl,
+                                        contentDescription = "Profile picture",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .clip(CircleShape)
+                                            .size(40.dp)
+                                    )
+                                    Text(
+                                        modifier = Modifier.padding(16.dp),
+                                        text = userData.username.toString()
+                                    )
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    Column {
+                                        IconButton(onClick = { expanded = true }) {
+                                            Icon(imageVector = Icons.Filled.MoreVert, contentDescription = null)
+                                        }
+                                        MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(12.dp))) {
+                                            DropdownMenu(
+                                                expanded = expanded,
+                                                onDismissRequest = { expanded = false },
+                                                modifier = Modifier
+                                            ) {
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            text = "Profile",
+                                                            style = MaterialTheme.typography.bodyLarge
+                                                        )
+                                                    },
+                                                    onClick = { navController.navigate("otherprofile")
+                                                        expanded=false }
+                                                )
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            text = " ",
+                                                            style = MaterialTheme.typography.bodyLarge
+                                                        )
+                                                    },
+                                                    onClick = {}
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                        }
+                            AnimatedVisibility(
+                                selectionMode,
+                                enter = slideInVertically(),
+                                exit = slideOutVertically()
+                            ){
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier.fillMaxWidth(0.95f)
+                                ) {
+                                    Text(text = selectedItem.size.toString(), modifier = Modifier.padding(start = 20.dp))
+                                    IconButton(onClick = {
+                                        showDialog = true
+                                    }) {
+                                        Icon(imageVector = Icons.Filled.Delete, contentDescription = null)
+                                    }
+                                }
+                            }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                    Icon(Icons.Filled.ArrowBackIosNew, contentDescription = "Back")
-                }},
+                    IconButton(onClick = {if(selectionMode) {selectionMode = false ; selectedItem.clear()} else onBack() }) {
+                        Icon(Icons.Filled.ArrowBackIosNew, contentDescription = "Back")
+                    }
+                },
             )
-
         }
     ) {it->
         //Image(modifier = Modifier
@@ -121,6 +203,13 @@ fun Chat(navController: NavController, viewModel: ChatViewModel, messages: List<
          //   .scale(2.3f),
          //   painter = painterResource(R.drawable.light),
          //   contentDescription = null)
+        AnimatedVisibility(showDialog) {
+            MsgDeleteDialog(selectedItem.size, hideDialog = { showDialog = false }, deleteMsg = {viewModel.deleteMsg(selectedItem, chatId)
+                selectedItem.clear()
+                showDialog=false
+                selectionMode = false
+            })
+        }
         Column(
             modifier = Modifier
                 .padding(it)
@@ -136,7 +225,8 @@ fun Chat(navController: NavController, viewModel: ChatViewModel, messages: List<
                     MessageItem(message = message,
                         state,
                         reaction = { viewModel.Reaction(it, chatId, message.msgId) },
-                        dltMsg = { viewModel.dltMsg(it, chatId) }
+                        selectionMode = { selectionMode = true
+                                        selectedItem.add(it)}, mode = selectionMode, Selected = {if(selectedItem.contains(message.msgId))  {selectedItem.remove(it); if (selectedItem.size==0) selectionMode = false} else selectedItem.add(it) }, isSelected = selectedItem.contains(message.msgId)
                         )
                 }
             }
@@ -160,17 +250,14 @@ fun Chat(navController: NavController, viewModel: ChatViewModel, messages: List<
                         Icon(imageVector = Icons.Filled.Send, contentDescription = null )
                     }
                 }
-
             }
-
         }
     }
-
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, dltMsg:(String)->Unit) {
+fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, selectionMode:(String)->Unit, mode: Boolean, Selected:(String)->Unit, isSelected: Boolean) {
     fun Path.rightBubbleShape(
         size: Size,
         cornerRadius: Float,
@@ -259,9 +346,16 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, dltM
     var onClick by remember {
         mutableStateOf(false)
     }
-
+    val clkcolor = if(isSelected) MaterialTheme.colorScheme.onPrimary else Color.Transparent
     Box(
         modifier = Modifier
+            .background(clkcolor)
+             //.combinedClickable(
+             //    onLongClick = {
+               //   if (!mode) selectionMode(message.msgId) else {
+               //       null
+               //   }
+           //  }, onClick = { if (mode) Selected(message.msgId) })
             .fillMaxWidth()
             .padding(vertical = 4.dp, horizontal = 10.dp),
         contentAlignment = alignment
@@ -271,7 +365,6 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, dltM
             Column(
                 modifier = Modifier
                     .shadow(2.dp, RoundedCornerShape(16.dp))
-                    .combinedClickable(onLongClick = { onClick = !onClick }, onClick = {})
                     .widthIn(max = 270.dp)
                     .fillMaxHeight()
                     .background(color, RoundedCornerShape(16.dp)), horizontalAlignment = Alignment.End
@@ -294,7 +387,7 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, dltM
                 Text(text = message.reaction.toString())
             }
         }
-        AnimatedVisibility(onClick && !isCurrentUser) {
+      /*  AnimatedVisibility(onClick && !isCurrentUser) {
             MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(16.dp))) {
                 DropdownMenu( offset = DpOffset(50.dp, 30.dp),
                     expanded = onClick,
@@ -351,7 +444,7 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, dltM
                     )
                 }
             }
-        }
+        }*/
     }
 }
 

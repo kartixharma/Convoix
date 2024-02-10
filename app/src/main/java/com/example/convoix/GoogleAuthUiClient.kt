@@ -75,9 +75,7 @@ class GoogleAuthUiClient(
             username = displayName,
             ppurl = photoUrl.toString().substring(0,photoUrl.toString().length-6)
         )
-
     }
-
     private fun buildSignInRequest(): BeginSignInRequest{
         return BeginSignInRequest.Builder()
             .setGoogleIdTokenRequestOptions(
