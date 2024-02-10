@@ -55,7 +55,7 @@ fun ProfileScreen(
             Text(text = userData?.username.toString(),
                 modifier = Modifier.background(Color.DarkGray, RoundedCornerShape(12.dp)).padding(12.dp),
                 style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.background
+                color = Color.White
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(

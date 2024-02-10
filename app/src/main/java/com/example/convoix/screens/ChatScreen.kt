@@ -123,7 +123,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                         horizontalArrangement = Arrangement.SpaceBetween,
                         modifier = Modifier.fillMaxWidth(0.95f)
                     ) {
-                        IconButton(modifier = Modifier.padding(12.dp),
+                        IconButton(modifier = Modifier.padding(9.dp),
                             onClick = {
                                 isSelected = false
                                 selectedItems.clear()
@@ -145,7 +145,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.fillMaxWidth(0.95f)
+                        modifier = Modifier.fillMaxWidth(0.98f)
                     ) {
                         Text(
                             text = "Chats",
