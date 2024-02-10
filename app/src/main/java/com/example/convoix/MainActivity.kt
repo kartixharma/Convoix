@@ -113,6 +113,7 @@ class MainActivity : ComponentActivity() {
                             ChatScreen(navController, viewModel, state, showSingleChat = { usr, id ->
                                 viewModel.setchatUser(usr, id)
                                 viewModel.popMessage(id)
+                                viewModel.getTp(id)
                                 navController.navigate("chat")
                             })
                         }

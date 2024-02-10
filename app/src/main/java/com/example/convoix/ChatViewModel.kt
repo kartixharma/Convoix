@@ -27,6 +27,8 @@ class ChatViewModel: ViewModel() {
     var chats by mutableStateOf<List<ChatData>>(emptyList())
     var messages by mutableStateOf<List<Message>>(listOf())
     var msgListener: ListenerRegistration? = null
+    var tp by mutableStateOf(ChatData())
+    var tpListener: ListenerRegistration?=null
 
     fun setUserData(userData: UserData){
         _state.update { it.copy(userData=userData) }
@@ -38,6 +40,18 @@ class ChatViewModel: ViewModel() {
                 signInError = result.errmsg
             )
         }
+    }
+
+    fun getTp(chatId: String) {
+        tpListener?.remove()
+        tpListener = firestore.collection("chats").document(chatId).addSnapshotListener{ snp, err->
+            if (snp != null) {
+                tp = snp.toObject(ChatData::class.java)!!
+            }
+        }
+    }
+    fun depopTp(){
+        tpListener?.remove()
     }
     fun popMessage(chatId: String) {
         msgListener?.remove()
@@ -99,7 +113,7 @@ class ChatViewModel: ViewModel() {
                 Filter.equalTo("user1.email", state.value.userData?.email),
                 Filter.equalTo("user2.email", email)
             )
-        )).get().addOnSuccessListener{
+        )).get().addOnSuccessListener {
             if(it.isEmpty){
                 usersCollection.whereEqualTo("email", email).get().addOnSuccessListener{
                     if(it.isEmpty){
@@ -115,13 +129,15 @@ class ChatViewModel: ViewModel() {
                                 content = "",
                                 time = null
                             ),
-                            UserData(
+                            ChatUserData(
+                                typing = false,
                                 userId = state.value.userData?.userId.toString(),
                                 username = state.value.userData?.username,
                                 ppurl = state.value.userData?.ppurl.toString(),
                                 email = state.value.userData?.email.toString()
                             ),
-                            UserData(
+                            ChatUserData(
+                                typing = false,
                                 userId = chatPartner?.userId.toString(),
                                 username = chatPartner?.username,
                                 ppurl = chatPartner?.ppurl.toString(),
@@ -177,6 +193,17 @@ class ChatViewModel: ViewModel() {
     fun Reaction(str: String, chatId: String, msgId: String){
         firestore.collection("chats").document(chatId).collection("message").document(msgId).update("reaction", str)
     }
+    suspend fun typing(t: Boolean, chatId: String, userId: String) {
+        val chatRef = firestore.collection("chats").document(chatId)
+        val documentSnapshot = chatRef.get().await()
+        val fieldToUpdate = when {
+            userId == documentSnapshot.getString("user1.userId") -> "user1.typing"
+            userId == documentSnapshot.getString("user2.userId") -> "user2.typing"
+            else -> return
+        }
+
+        chatRef.update(fieldToUpdate, t)
+    }
     fun deleteMsg(msgIds: List<String>, chatId: String){
         for (id in msgIds){
             firestore.collection("chats").document(chatId).collection("message").document(id).delete()
@@ -208,11 +235,7 @@ class ChatViewModel: ViewModel() {
         _state.update { it.copy( srEmail = email) }
     }
 
-    fun setchatUser(usr: UserData, id: String) {
+    fun setchatUser(usr: ChatUserData, id: String) {
         _state.update { it.copy( User2 = usr, chatId = id ) }
     }
-
-
-
-
 }

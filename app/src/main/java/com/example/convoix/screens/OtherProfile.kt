@@ -18,10 +18,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.convoix.ChatUserData
 import com.example.convoix.UserData
 
 @Composable
-fun OtherProfile(user : UserData){
+fun OtherProfile(user : ChatUserData){
     Column {
         Row(modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically) {

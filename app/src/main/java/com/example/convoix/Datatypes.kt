@@ -6,18 +6,29 @@ data class SignInResult (
     val data: UserData?,
     val errmsg: String?
 )
+
 data class UserData (
     val userId: String = "",
     val username: String? = "",
     val ppurl: String = "",
     val email: String = ""
 )
+
+data class ChatUserData (
+    val userId: String = "",
+    val typing:Boolean= false,
+    val username: String? = "",
+    val ppurl: String = "",
+    val email: String = ""
+)
+
 data class ChatData (
     val chatId: String = "",
     val last: Message? = null,
-    val user1: UserData? = null,
-    val user2: UserData? = null
+    val user1: ChatUserData? = null,
+    val user2: ChatUserData? = null
 )
+
 data class Message(
     val msgId: String = "",
     val senderId: String? = "",

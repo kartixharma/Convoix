@@ -55,6 +55,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.convoix.AppState
 import com.example.convoix.ChatData
+import com.example.convoix.ChatUserData
 import com.example.convoix.ChatViewModel
 import com.example.convoix.CustomDialogBox
 import com.example.convoix.DeleteDialog
@@ -64,7 +65,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Composable
-fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: AppState, showSingleChat: (UserData, String) -> Unit){
+fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: AppState, showSingleChat: (ChatUserData, String) -> Unit){
     val chats = viewModel.chats
     var isSelected by remember {
         mutableStateOf(false)
@@ -217,7 +218,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
 }
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ChatItem(isSelected: Boolean?, userData: UserData, showSingleChat: (UserData, String) -> Unit, chat: ChatData, showRow:(String)->Unit) {
+fun ChatItem(isSelected: Boolean?, userData: ChatUserData, showSingleChat: (ChatUserData, String) -> Unit, chat: ChatData, showRow:(String)->Unit) {
     val formatter = remember {
         SimpleDateFormat(("hh:mm a"), Locale.getDefault())
     }
@@ -250,7 +251,7 @@ fun ChatItem(isSelected: Boolean?, userData: UserData, showSingleChat: (UserData
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-            AnimatedVisibility(chat.last?.time!=null) {
+            AnimatedVisibility(chat.last?.time!=null && !userData.typing) {
                 Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                     Text( modifier = Modifier.width(200.dp),
                         text = chat.last?.content.orEmpty(),
@@ -265,6 +266,13 @@ fun ChatItem(isSelected: Boolean?, userData: UserData, showSingleChat: (UserData
                         style = MaterialTheme.typography.titleSmall
                     )
                 }
+            }
+            if(userData.typing){
+                Text(
+                    text = "Typing...",
+                    color = Color(0xFF1952C4),
+                    style = MaterialTheme.typography.titleSmall
+                )
             }
         }
     }

@@ -3,12 +3,14 @@ package com.example.convoix.screens
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context.CLIPBOARD_SERVICE
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -57,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -70,22 +73,36 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil.ImageLoader
 import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
 import com.example.convoix.AppState
+import com.example.convoix.ChatUserData
 import com.example.convoix.ChatViewModel
 import com.example.convoix.DeleteDialog
 import com.example.convoix.Message
 import com.example.convoix.MsgDeleteDialog
+import com.example.convoix.R
 import com.example.convoix.UserData
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Chat(navController: NavController, viewModel: ChatViewModel, messages: List<Message>, userData: UserData, sendReply:(String, String)->Unit, chatId:String, state: AppState, onBack:()->Unit) {
+fun Chat(navController: NavController,
+         viewModel: ChatViewModel,
+         messages: List<Message>,
+         userData: ChatUserData,
+         sendReply:(String, String)->Unit,
+         chatId:String, state: AppState,
+         onBack:()->Unit
+) {
     var reply by rememberSaveable {
         mutableStateOf("")
     }
+    val tp = viewModel.tp
     var selectionMode by remember {
         mutableStateOf(false)
     }
@@ -96,6 +113,14 @@ fun Chat(navController: NavController, viewModel: ChatViewModel, messages: List<
         mutableStateOf(false)
     }
     var expanded by remember { mutableStateOf(false) }
+    LaunchedEffect(key1 = reply){
+        if(reply.length>0) {
+            viewModel.typing(true, chatId = chatId, userId = state.userData?.userId.toString())
+        }
+        if(reply.length==0){
+            viewModel.typing(false, chatId = chatId, userId = state.userData?.userId.toString())
+        }
+    }
     LaunchedEffect(key1 = Unit){
         viewModel.popMessage(state.chatId)
     }
@@ -108,6 +133,7 @@ fun Chat(navController: NavController, viewModel: ChatViewModel, messages: List<
             navController.popBackStack()
             viewModel.dePopMsg()
             expanded=false
+            reply=""
         }
     }
     Scaffold(
@@ -221,6 +247,18 @@ fun Chat(navController: NavController, viewModel: ChatViewModel, messages: List<
                     .fillMaxWidth(),
                 reverseLayout = true
             ) {
+                item {
+                    if(userData.userId==tp.user1?.userId){
+                        AnimatedVisibility(tp.user1.typing) {
+                            loading()
+                        }
+                    }
+                    if(userData.userId==tp.user2?.userId){
+                        AnimatedVisibility(tp.user2.typing) {
+                            loading()
+                        }
+                    }
+                }
                 items(messages) { message ->
                     MessageItem(message = message,
                         state,
@@ -350,12 +388,12 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, sele
     Box(
         modifier = Modifier
             .background(clkcolor)
-             //.combinedClickable(
-             //    onLongClick = {
-               //   if (!mode) selectionMode(message.msgId) else {
-               //       null
-               //   }
-           //  }, onClick = { if (mode) Selected(message.msgId) })
+            //.combinedClickable(
+            //    onLongClick = {
+            //   if (!mode) selectionMode(message.msgId) else {
+            //       null
+            //   }
+            //  }, onClick = { if (mode) Selected(message.msgId) })
             .fillMaxWidth()
             .padding(vertical = 4.dp, horizontal = 10.dp),
         contentAlignment = alignment
@@ -448,3 +486,24 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, sele
     }
 }
 
+@Composable
+fun loading(){
+    val context = LocalContext.current
+    val imageLoader = ImageLoader.Builder(context)
+        .components {
+            if (Build.VERSION.SDK_INT >= 28) {
+                add(ImageDecoderDecoder.Factory())
+            } else {
+                add(GifDecoder.Factory())
+            }
+        }
+        .build()
+    Column(Modifier.padding(start = 30.dp),horizontalAlignment = Alignment.CenterHorizontally) {
+        Image(
+            painter = rememberAsyncImagePainter(R.drawable.output_onlinegiftools__1_, imageLoader),
+            contentDescription = null, modifier = Modifier
+                .scale(1.5f)
+                .size(70.dp)
+        )
+    }
+}
