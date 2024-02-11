@@ -9,9 +9,11 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,11 +25,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.magnifier
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -67,6 +72,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.modifier.modifierLocalConsumer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpOffset
@@ -86,6 +92,8 @@ import com.example.convoix.Message
 import com.example.convoix.MsgDeleteDialog
 import com.example.convoix.R
 import com.example.convoix.UserData
+import com.google.accompanist.insets.imePadding
+import com.google.accompanist.insets.navigationBarsPadding
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -102,6 +110,7 @@ fun Chat(navController: NavController,
     var reply by rememberSaveable {
         mutableStateOf("")
     }
+
     val tp = viewModel.tp
     var selectionMode by remember {
         mutableStateOf(false)
@@ -132,11 +141,12 @@ fun Chat(navController: NavController,
         else{
             navController.popBackStack()
             viewModel.dePopMsg()
+            viewModel.depopTp()
             expanded=false
             reply=""
         }
     }
-    Scaffold(
+    Scaffold(modifier = Modifier,
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
@@ -157,10 +167,31 @@ fun Chat(navController: NavController,
                                             .clip(CircleShape)
                                             .size(40.dp)
                                     )
-                                    Text(
-                                        modifier = Modifier.padding(16.dp),
-                                        text = userData.username.toString()
-                                    )
+                                    Column(verticalArrangement = Arrangement.Center){
+                                        Text(
+                                            modifier = Modifier.padding(start = 16.dp),
+                                            text = userData.username.toString()
+                                        )
+                                        if(userData.userId==tp.user1?.userId){
+                                            AnimatedVisibility(tp.user1.typing) {
+                                                Text(
+                                                    text = "Typing...",
+                                                    color = Color(0xFF1952C4),
+                                                    style = MaterialTheme.typography.titleSmall
+                                                )
+                                            }
+                                        }
+                                        if(userData.userId==tp.user2?.userId){
+                                            AnimatedVisibility(tp.user2.typing) {
+                                                Text(modifier = Modifier.padding(start = 16.dp),
+                                                    text = "Typing...",
+                                                    color = Color(0xFF1952C4),
+                                                    style = MaterialTheme.typography.titleSmall
+                                                )
+                                            }
+                                        }
+                                    }
+
                                     Spacer(modifier = Modifier.weight(1f))
                                     Column {
                                         IconButton(onClick = { expanded = true }) {
@@ -389,11 +420,11 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, sele
         modifier = Modifier
             .background(clkcolor)
             //.combinedClickable(
-            //    onLongClick = {
-            //   if (!mode) selectionMode(message.msgId) else {
-            //       null
-            //   }
-            //  }, onClick = { if (mode) Selected(message.msgId) })
+             //   onLongClick = {
+             //  if (!mode) selectionMode(message.msgId) else {
+             //      null
+             //  }
+            //  }, onClick = { if (mode) Selected(message.msgId)  else onClick=!onClick})
             .fillMaxWidth()
             .padding(vertical = 4.dp, horizontal = 10.dp),
         contentAlignment = alignment
@@ -420,12 +451,15 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, sele
                     color = Color.White,
                 )
             }
-
             AnimatedVisibility(message.reaction.toString()!="") {
-                Text(text = message.reaction.toString())
+                Text(text = message.reaction.toString(), modifier = Modifier
+                    .offset(y = (-10).dp)
+                    .background(color, CircleShape).border(BorderStroke(1.5.dp, MaterialTheme.colorScheme.background), shape = CircleShape)
+                    .padding(4.dp)
+                    )
             }
         }
-      /*  AnimatedVisibility(onClick && !isCurrentUser) {
+        AnimatedVisibility(onClick && !isCurrentUser) {
             MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(16.dp))) {
                 DropdownMenu( offset = DpOffset(50.dp, 30.dp),
                     expanded = onClick,
@@ -473,16 +507,9 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, sele
                             onClick = false
                         }
                     )
-                    DropdownMenuItem(
-                        text = { Text(text = "Delete", style = MaterialTheme.typography.bodyLarge) },
-                        onClick = {
-                            dltMsg(message.msgId)
-                            onClick = false
-                        }
-                    )
                 }
             }
-        }*/
+        }
     }
 }
 

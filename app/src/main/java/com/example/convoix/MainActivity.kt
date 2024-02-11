@@ -1,6 +1,8 @@
 package com.example.convoix
 
 import android.os.Bundle
+import android.view.WindowManager
+import android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -128,7 +130,9 @@ class MainActivity : ComponentActivity() {
                                 viewModel.sendReply(msg = msg, chatId = id)
                             },state.chatId, state, onBack = {
                                 navController.popBackStack()
-                                viewModel.dePopMsg()})
+                                viewModel.dePopMsg()
+                                viewModel.depopTp()
+                            })
                         }
                         composable("otherprofile"){
                             OtherProfile(state.User2!!)
