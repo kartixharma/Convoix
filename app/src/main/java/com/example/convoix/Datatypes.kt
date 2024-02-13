@@ -10,6 +10,7 @@ data class SignInResult (
 data class UserData (
     val userId: String = "",
     val username: String? = "",
+    val bio: String = "",
     val ppurl: String = "",
     val email: String = ""
 )
@@ -17,6 +18,7 @@ data class UserData (
 data class ChatUserData (
     val userId: String = "",
     val typing:Boolean= false,
+    val bio: String = "",
     val username: String? = "",
     val ppurl: String = "",
     val email: String = ""
@@ -33,11 +35,7 @@ data class Message(
     val msgId: String = "",
     val senderId: String? = "",
     val reaction: String? = "",
-    val messageType: MsgType = MsgType.TXT,
+    val imgUrl: String? = "",
     val content: String?="",
     val time: Timestamp? = Timestamp.now()
 )
-
-enum class MsgType{
-    TXT, IMG
-}

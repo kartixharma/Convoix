@@ -270,7 +270,7 @@ fun ChatItem(isSelected: Boolean?, userData: ChatUserData, showSingleChat: (Chat
             if(userData.typing){
                 Text(
                     text = "Typing...",
-                    color = Color(0xFF1952C4),
+                    color = Color(0xFF3075FF),
                     style = MaterialTheme.typography.titleSmall
                 )
             }

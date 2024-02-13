@@ -3,9 +3,15 @@ package com.example.convoix.screens
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context.CLIPBOARD_SERVICE
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.net.Uri
 import android.os.Build
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -16,12 +22,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,6 +47,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.InsertPhoto
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.DropdownMenu
@@ -59,10 +68,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
@@ -71,10 +82,12 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.modifier.modifierLocalConsumer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -92,10 +105,14 @@ import com.example.convoix.Message
 import com.example.convoix.MsgDeleteDialog
 import com.example.convoix.R
 import com.example.convoix.UserData
+import com.example.convoix.View
 import com.google.accompanist.insets.imePadding
 import com.google.accompanist.insets.navigationBarsPadding
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
+import id.zelory.compressor.Compressor
+import id.zelory.compressor.constraint.quality
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,14 +120,20 @@ fun Chat(navController: NavController,
          viewModel: ChatViewModel,
          messages: List<Message>,
          userData: ChatUserData,
-         sendReply:(String, String)->Unit,
          chatId:String, state: AppState,
          onBack:()->Unit
 ) {
     var reply by rememberSaveable {
         mutableStateOf("")
     }
-
+    val context = LocalContext.current
+    var imgUri by remember {
+        mutableStateOf<Uri?>(null)
+    }
+    val launcher = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()){
+        imgUri = it
+    }
+    var bitmap by remember {mutableStateOf<Bitmap?>(null)}
     val tp = viewModel.tp
     var selectionMode by remember {
         mutableStateOf(false)
@@ -121,6 +144,10 @@ fun Chat(navController: NavController,
     var showDialog by remember {
         mutableStateOf(false)
     }
+    var imageUrl by remember {
+        mutableStateOf("")
+    }
+
     var expanded by remember { mutableStateOf(false) }
     LaunchedEffect(key1 = reply){
         if(reply.length>0) {
@@ -149,7 +176,7 @@ fun Chat(navController: NavController,
     Scaffold(modifier = Modifier,
         topBar = {
             TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.onPrimary),
                         title = {
                             if(!selectionMode){
                                 Row(
@@ -174,9 +201,9 @@ fun Chat(navController: NavController,
                                         )
                                         if(userData.userId==tp.user1?.userId){
                                             AnimatedVisibility(tp.user1.typing) {
-                                                Text(
+                                                Text(modifier = Modifier.padding(start = 16.dp),
                                                     text = "Typing...",
-                                                    color = Color(0xFF1952C4),
+                                                    color = MaterialTheme.colorScheme.onBackground,
                                                     style = MaterialTheme.typography.titleSmall
                                                 )
                                             }
@@ -254,18 +281,33 @@ fun Chat(navController: NavController,
             )
         }
     ) {it->
-        //Image(modifier = Modifier
-        //    .blur(3.dp)
-        //    .fillMaxSize()
-         //   .scale(2.3f),
-         //   painter = painterResource(R.drawable.light),
-         //   contentDescription = null)
+        Image(modifier = Modifier
+            .fillMaxSize()
+            .scale(1.3f)
+            .alpha(if (!isSystemInDarkTheme()) 0.8f else 1f),
+            painter = painterResource(R.drawable.dark),
+            contentDescription = null)
         AnimatedVisibility(showDialog) {
             MsgDeleteDialog(selectedItem.size, hideDialog = { showDialog = false }, deleteMsg = {viewModel.deleteMsg(selectedItem, chatId)
                 selectedItem.clear()
                 showDialog=false
                 selectionMode = false
             })
+        }
+        AnimatedVisibility(imageUrl!="") {
+            View(imageUrl = imageUrl, hideDialog = {imageUrl=""})
+        }
+        imgUri?.let {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val src = ImageDecoder.createSource(context.contentResolver,it)
+                bitmap = ImageDecoder.decodeBitmap(src)
+            }
+            Image(bitmap = bitmap?.asImageBitmap()!!, contentDescription = null, modifier = Modifier
+                .fillMaxWidth()
+                .size(300.dp)
+                .background(MaterialTheme.colorScheme.secondaryContainer)
+                .padding(10.dp))
+
         }
         Column(
             modifier = Modifier
@@ -292,13 +334,14 @@ fun Chat(navController: NavController,
                 }
                 items(messages) { message ->
                     MessageItem(message = message,
-                        state,
+                        state, viewImage = {imageUrl = it},
                         reaction = { viewModel.Reaction(it, chatId, message.msgId) },
                         selectionMode = { selectionMode = true
                                         selectedItem.add(it)}, mode = selectionMode, Selected = {if(selectedItem.contains(message.msgId))  {selectedItem.remove(it); if (selectedItem.size==0) selectionMode = false} else selectedItem.add(it) }, isSelected = selectedItem.contains(message.msgId)
                         )
                 }
             }
+
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier
@@ -307,15 +350,37 @@ fun Chat(navController: NavController,
                 TextField(modifier = Modifier.weight(1f), placeholder = { Text(text = "Message")},
                     value = reply,
                     onValueChange = { reply=it },
+                   // trailingIcon = {
+                    //    IconButton(onClick = { launcher.launch("image/*") }) {
+                    //        Icon(
+                    //            imageVector = Icons.Filled.InsertPhoto,
+                    //            contentDescription = null
+                    //        )
+                   //     }
+                   // },
                     colors = TextFieldDefaults.colors(
                         unfocusedContainerColor = Color.Transparent,
                         focusedContainerColor = Color.Transparent,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     ))
-                AnimatedVisibility(reply.isNotEmpty()) {
-                    IconButton(onClick = { sendReply(reply,chatId)
-                        reply=""}) {
+                AnimatedVisibility(reply.isNotEmpty() || imgUri!=null) {
+                    val scope = rememberCoroutineScope()
+                    IconButton(onClick = {
+                        if (imgUri == null) {
+                            viewModel.sendReply(msg = reply, chatId = chatId, imgUrl = "")
+                            reply = ""
+                        } else {
+                            scope.launch {
+                                viewModel.UploadImage(imgUri!!) { imageUrl ->
+                                    viewModel.sendReply(chatId = chatId, msg = reply, imgUrl = imageUrl)
+                                }
+                                reply = ""
+                                imgUri = null
+                            }
+
+                             }
+                    }) {
                         Icon(imageVector = Icons.Filled.Send, contentDescription = null )
                     }
                 }
@@ -326,12 +391,13 @@ fun Chat(navController: NavController,
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, selectionMode:(String)->Unit, mode: Boolean, Selected:(String)->Unit, isSelected: Boolean) {
+fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, viewImage:(String)->Unit, selectionMode:(String)->Unit, mode: Boolean, Selected:(String)->Unit, isSelected: Boolean) {
     fun Path.rightBubbleShape(
         size: Size,
         cornerRadius: Float,
         tailWidth: Float,
     ) {
+
         val arcBoxSize = cornerRadius * 2
         moveTo(size.width, size.height)
         arcTo(
@@ -377,6 +443,7 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, sele
         )
         close()
     }
+
     val cornerRadius = 20.dp
     val tailWidth = 15.dp
     val rightBubblePadding = PaddingValues(
@@ -420,10 +487,10 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, sele
         modifier = Modifier
             .background(clkcolor)
             //.combinedClickable(
-             //   onLongClick = {
-             //  if (!mode) selectionMode(message.msgId) else {
-             //      null
-             //  }
+            //   onLongClick = {
+            //  if (!mode) selectionMode(message.msgId) else {
+            //      null
+            //  }
             //  }, onClick = { if (mode) Selected(message.msgId)  else onClick=!onClick})
             .fillMaxWidth()
             .padding(vertical = 4.dp, horizontal = 10.dp),
@@ -438,12 +505,29 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, sele
                     .fillMaxHeight()
                     .background(color, RoundedCornerShape(16.dp)), horizontalAlignment = Alignment.End
             ) {
-                Text(
-                    text = message.content.toString(),
-                    modifier = Modifier.padding(top = 10.dp, start = 10.dp, end = 10.dp),
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp),
-                    color = Color.White
-                )
+                if(message.imgUrl!=""){
+                    AsyncImage(
+                        model = message.imgUrl,
+                        contentDescription = "Profile picture",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .clickable { viewImage(message.imgUrl.toString()) }
+                            .aspectRatio(16f / 9f)
+                            .padding(7.dp)
+                            .clip(
+                                RoundedCornerShape(12.dp)
+                            )
+                            .size(60.dp)
+                    )
+                }
+                if(message.content!=""){
+                    Text(
+                        text = message.content.toString(),
+                        modifier = Modifier.padding(top = 10.dp, start = 10.dp, end = 10.dp),
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp),
+                        color = Color.White
+                    )
+                }
                 Text(
                     text = formatter.format(message.time?.toDate()!!),
                     modifier = Modifier.padding(end = 8.dp, bottom = 5.dp, start = 8.dp, top = 2.dp),
@@ -454,7 +538,11 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, sele
             AnimatedVisibility(message.reaction.toString()!="") {
                 Text(text = message.reaction.toString(), modifier = Modifier
                     .offset(y = (-10).dp)
-                    .background(color, CircleShape).border(BorderStroke(1.5.dp, MaterialTheme.colorScheme.background), shape = CircleShape)
+                    .background(color, CircleShape)
+                    .border(
+                        BorderStroke(1.5.dp, MaterialTheme.colorScheme.background),
+                        shape = CircleShape
+                    )
                     .padding(4.dp)
                     )
             }
@@ -511,7 +599,9 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, sele
             }
         }
     }
+
 }
+
 
 @Composable
 fun loading(){
@@ -527,9 +617,9 @@ fun loading(){
         .build()
     Column(Modifier.padding(start = 30.dp),horizontalAlignment = Alignment.CenterHorizontally) {
         Image(
-            painter = rememberAsyncImagePainter(R.drawable.output_onlinegiftools__1_, imageLoader),
+            painter = rememberAsyncImagePainter(R.drawable.loading, imageLoader),
             contentDescription = null, modifier = Modifier
-                .scale(1.5f)
+                .scale(1.3f)
                 .size(70.dp)
         )
     }

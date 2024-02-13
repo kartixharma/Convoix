@@ -56,14 +56,14 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
                     NavHost(navController = navController,
                         startDestination = "start"){
-                        composable("start"){
-                            LaunchedEffect(key1 = Unit){
-                                if(googleAuthUiClient.getSignedInUser() != null){
-                                    viewModel.setUserData(googleAuthUiClient.getSignedInUser()!!)
-                                    viewModel.showChats()
+                        composable("start") {
+                            LaunchedEffect(key1 = Unit) {
+                                val userData = googleAuthUiClient.getSignedInUser()
+                                if (userData != null) {
+                                    viewModel.getUserData(userData.userId)
+                                    viewModel.showChats(userData.userId)
                                     navController.navigate("chats")
-                                }
-                                else{
+                                } else {
                                     navController.navigate("signIn")
                                 }
                             }
@@ -88,14 +88,14 @@ class MainActivity : ComponentActivity() {
                                     val userData = googleAuthUiClient.getSignedInUser()
                                     userData?.let {
                                         viewModel.addUserDataToFirestore(it)
-                                        viewModel.setUserData(userData)
-                                        viewModel.showChats()
+                                        viewModel.getUserData(userData.userId)
+                                        viewModel.showChats(userData.userId)
                                     }
                                     viewModel.showAnim()
                                     // delay(2000)
                                     navController.navigate("chats")
                                     viewModel.resetState()
-                                    viewModel.setUserData(userData!!)
+                                    viewModel.getUserData(userData?.userId.toString())
                                 }
                             }
                             SignInScreen1(state = state,
@@ -126,9 +126,7 @@ class MainActivity : ComponentActivity() {
                             targetOffsetX = { fullWidth -> fullWidth },
                             animationSpec = tween(200)
                         )}){
-                            Chat(navController, viewModel, viewModel.messages, state.User2!!, sendReply = {msg, id->
-                                viewModel.sendReply(msg = msg, chatId = id)
-                            },state.chatId, state, onBack = {
+                            Chat(navController, viewModel, viewModel.messages, state.User2!!, state.chatId, state, onBack = {
                                 navController.popBackStack()
                                 viewModel.dePopMsg()
                                 viewModel.depopTp()
@@ -144,7 +142,7 @@ class MainActivity : ComponentActivity() {
                                     Toast.makeText(applicationContext, "Signed Out", Toast.LENGTH_SHORT).show()
                                     navController.navigate("signIn")
                                }
-                            })
+                            },navController)
 
                         }
                     }

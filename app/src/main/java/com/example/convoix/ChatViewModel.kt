@@ -1,22 +1,28 @@
 package com.example.convoix
 
 import android.content.ContentValues
+import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.Filter
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.toObject
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
+import java.util.UUID
 
 
 class ChatViewModel: ViewModel() {
@@ -29,10 +35,8 @@ class ChatViewModel: ViewModel() {
     var msgListener: ListenerRegistration? = null
     var tp by mutableStateOf(ChatData())
     var tpListener: ListenerRegistration?=null
+    val storage = FirebaseStorage.getInstance()
 
-    fun setUserData(userData: UserData){
-        _state.update { it.copy(userData=userData) }
-    }
     fun onSignInResult(result: SignInResult){
         _state.update {
             it.copy(
@@ -64,15 +68,17 @@ class ChatViewModel: ViewModel() {
             }
         }
     }
+
     fun dePopMsg(){
         messages = listOf()
         msgListener?.remove()
     }
-    fun showChats(){
+
+    fun showChats(userId: String){
         firestore.collection("chats").where(
             Filter.or(
-                Filter.equalTo("user1.userId", state.value.userData?.userId),
-                Filter.equalTo("user2.userId", state.value.userData?.userId)
+                Filter.equalTo("user1.userId", userId),
+                Filter.equalTo("user2.userId", userId)
             )
         ).addSnapshotListener{ value, err ->
             if(value!=null){
@@ -82,13 +88,38 @@ class ChatViewModel: ViewModel() {
                 }
         }
     }
-    fun sendReply(chatId: String, msg: String){
+
+    fun UploadImage(imgUri: Uri?, callback: (String) -> Unit) {
+        val storageRef = storage.reference
+        val uuid = UUID.randomUUID()
+        val imageRef = storageRef.child("images/$uuid")
+        viewModelScope.launch(Dispatchers.IO) {
+            imageRef.putFile(imgUri!!)
+                .addOnSuccessListener {
+                    imageRef.downloadUrl
+                        .addOnSuccessListener { downloadUri ->
+                            val url = downloadUri.toString()
+                            callback(url)
+                        }
+                        .addOnFailureListener {
+                            callback("")
+                        }
+                }
+                .addOnFailureListener {
+                    callback("")
+                }
+        }
+
+    }
+
+
+    fun sendReply(chatId: String, msg: String, imgUrl: String =""){
         val id = firestore.collection("chats").document().collection("message").document().id
         val time = Calendar.getInstance().time
         val message = Message(
             reaction = "",
             msgId = id,
-            messageType = MsgType.TXT,
+            imgUrl = imgUrl,
             senderId = state.value.userData?.userId.toString(),
             content = msg,
             time = Timestamp(time)
@@ -130,6 +161,7 @@ class ChatViewModel: ViewModel() {
                                 time = null
                             ),
                             ChatUserData(
+                                bio = state.value.userData?.bio.toString(),
                                 typing = false,
                                 userId = state.value.userData?.userId.toString(),
                                 username = state.value.userData?.username,
@@ -137,6 +169,7 @@ class ChatViewModel: ViewModel() {
                                 email = state.value.userData?.email.toString()
                             ),
                             ChatUserData(
+                                bio = chatPartner?.bio.toString(),
                                 typing = false,
                                 userId = chatPartner?.userId.toString(),
                                 username = chatPartner?.username,
@@ -163,13 +196,50 @@ class ChatViewModel: ViewModel() {
             "ppurl" to userData.ppurl,
             "email" to userData.email
         )
-        userDocument.set(userDataMap, SetOptions.merge())
-            .addOnSuccessListener {
-                Log.d(ContentValues.TAG, "User data added to Firestore successfully")
+        userDocument.get().addOnSuccessListener {
+            if(it.exists()){
+
+            }
+            else{
+                userDocument.set(userDataMap)
+                    .addOnSuccessListener {
+                        Log.d(ContentValues.TAG, "User data added to Firestore successfully")
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e(ContentValues.TAG, "Error adding user data to Firestore", e)
+                    }
+            }
+        }
+    }
+
+    fun updateProfile(userData: UserData) {
+        val userDocument = usersCollection.document(userData.userId)
+        userDocument.update("username", userData.username, "bio", userData.bio)
+        firestore.collection("chats").get()
+            .addOnSuccessListener { querySnapshot ->
+                for (document in querySnapshot.documents) {
+                    val user1Id = document.getString("user1.userId")
+                    val user2Id = document.getString("user2.userId")
+
+                    if (user1Id == userData.userId) {
+                        document.reference.update("user1.username", userData.username, "user1.bio", userData.bio)
+                    }
+                    if (user2Id == userData.userId) {
+                        document.reference.update("user2.username", userData.username, "user2.bio", userData.bio)
+                    }
+                }
             }
             .addOnFailureListener { e ->
-                Log.e(ContentValues.TAG, "Error adding user data to Firestore", e)
+                Log.e(ContentValues.TAG, "Error getting chats collection", e)
             }
+    }
+
+   fun getUserData(userId: String){
+        usersCollection.document(userId).addSnapshotListener { value, error ->
+            if(value!=null){
+                _state.update { it.copy(userData = value.toObject(UserData::class.java)) }
+            }
+        }
     }
 
     fun deleteChat(chatId: String) {
