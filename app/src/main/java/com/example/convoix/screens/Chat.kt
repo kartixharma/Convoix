@@ -1,14 +1,9 @@
 package com.example.convoix.screens
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context.CLIPBOARD_SERVICE
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
-import android.provider.MediaStore
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,28 +21,21 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.magnifier
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.InsertPhoto
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.DropdownMenu
@@ -77,16 +65,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.modifier.modifierLocalConsumer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -100,20 +84,12 @@ import coil.decode.ImageDecoderDecoder
 import com.example.convoix.AppState
 import com.example.convoix.ChatUserData
 import com.example.convoix.ChatViewModel
-import com.example.convoix.DeleteDialog
 import com.example.convoix.Message
 import com.example.convoix.MsgDeleteDialog
 import com.example.convoix.R
-import com.example.convoix.UserData
 import com.example.convoix.View
-import com.google.accompanist.insets.imePadding
-import com.google.accompanist.insets.navigationBarsPadding
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
-import id.zelory.compressor.Compressor
-import id.zelory.compressor.constraint.quality
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Chat(navController: NavController,
@@ -212,7 +188,7 @@ fun Chat(navController: NavController,
                                             AnimatedVisibility(tp.user2.typing) {
                                                 Text(modifier = Modifier.padding(start = 16.dp),
                                                     text = "Typing...",
-                                                    color = Color(0xFF1952C4),
+                                                    color = MaterialTheme.colorScheme.onBackground,
                                                     style = MaterialTheme.typography.titleSmall
                                                 )
                                             }
@@ -332,12 +308,21 @@ fun Chat(navController: NavController,
                         }
                     }
                 }
-                items(messages) { message ->
-                    MessageItem(message = message,
+                items(messages.size) { index ->
+                    val message = messages[index]
+                    val prevMessage = if (index > 0) messages[index - 1] else null
+                    val nextMessage = if (index < messages.size - 1) messages[index + 1] else null
+                    MessageItem(
+                        message = message,
                         state, viewImage = {imageUrl = it},
                         reaction = { viewModel.Reaction(it, chatId, message.msgId) },
                         selectionMode = { selectionMode = true
-                                        selectedItem.add(it)}, mode = selectionMode, Selected = {if(selectedItem.contains(message.msgId))  {selectedItem.remove(it); if (selectedItem.size==0) selectionMode = false} else selectedItem.add(it) }, isSelected = selectedItem.contains(message.msgId)
+                                        selectedItem.add(it)},
+                        mode = selectionMode,
+                        Selected = {if(selectedItem.contains(message.msgId))  {selectedItem.remove(it); if (selectedItem.size==0) selectionMode = false} else selectedItem.add(it) },
+                        isSelected = selectedItem.contains(message.msgId),
+                        prevId = prevMessage?.senderId.toString(),
+                        nextId = nextMessage?.senderId.toString()
                         )
                 }
             }
@@ -371,13 +356,13 @@ fun Chat(navController: NavController,
                             viewModel.sendReply(msg = reply, chatId = chatId, imgUrl = "")
                             reply = ""
                         } else {
-                            scope.launch {
-                                viewModel.UploadImage(imgUri!!) { imageUrl ->
-                                    viewModel.sendReply(chatId = chatId, msg = reply, imgUrl = imageUrl)
-                                }
-                                reply = ""
-                                imgUri = null
-                            }
+                            //scope.launch {
+                           //     viewModel.UploadImage(imgUri!!) { imageUrl ->
+                           //         viewModel.sendReply(chatId = chatId, msg = reply, imgUrl = imageUrl)
+                           //     }
+                           //     reply = ""
+                            //    imgUri = null
+                          //  }
 
                              }
                     }) {
@@ -391,80 +376,18 @@ fun Chat(navController: NavController,
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, viewImage:(String)->Unit, selectionMode:(String)->Unit, mode: Boolean, Selected:(String)->Unit, isSelected: Boolean) {
-    fun Path.rightBubbleShape(
-        size: Size,
-        cornerRadius: Float,
-        tailWidth: Float,
-    ) {
+fun MessageItem(message: Message,
+                state: AppState,
+                reaction:(String)->Unit,
+                viewImage:(String)->Unit,
+                selectionMode:(String)->Unit,
+                mode: Boolean,
+                Selected:(String)->Unit,
+                isSelected: Boolean,
+                prevId: String,
+                nextId: String
 
-        val arcBoxSize = cornerRadius * 2
-        moveTo(size.width, size.height)
-        arcTo(
-            rect = Rect(
-                left = 0f,
-                top = size.height - arcBoxSize,
-                right = arcBoxSize,
-                bottom = size.height,
-            ),
-            startAngleDegrees = 90f,
-            sweepAngleDegrees = 90f,
-            forceMoveTo = false
-        )
-        arcTo(
-            rect = Rect(
-                left = 0f,
-                top = 0f,
-                right = arcBoxSize,
-                bottom = arcBoxSize,
-            ),
-            startAngleDegrees = 180f,
-            sweepAngleDegrees = 90f,
-            forceMoveTo = false
-        )
-        arcTo(
-            rect = Rect(
-                left = size.width - arcBoxSize - tailWidth,
-                top = 0f,
-                right = size.width - tailWidth,
-                bottom = arcBoxSize,
-            ),
-            startAngleDegrees = 270f,
-            sweepAngleDegrees = 90f,
-            forceMoveTo = false
-        )
-        cubicTo(
-            x1 = size.width - tailWidth,
-            y1 = size.height - cornerRadius,
-            x2 = size.width - tailWidth,
-            y2 = size.height,
-            x3 = size.width,
-            y3 = size.height,
-        )
-        close()
-    }
-
-    val cornerRadius = 20.dp
-    val tailWidth = 15.dp
-    val rightBubblePadding = PaddingValues(
-        start = 20.dp,
-        end = 20.dp + tailWidth,
-        top = 12.dp,
-        bottom = 12.dp,
-    )
-    val (radius, tail) = with(LocalDensity.current) {
-        listOf(cornerRadius.toPx(), tailWidth.toPx())
-    }
-    val rightBubble = remember {
-        GenericShape { size, _ ->
-            this.rightBubbleShape(
-                size = size,
-                cornerRadius = radius,
-                tailWidth = tail,
-            )
-        }
-    }
-    val context = LocalContext.current
+) {
     val brush = Brush.linearGradient(listOf(
         Color(0xFF238CDD),
         Color(0xFF1952C4)
@@ -474,6 +397,34 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, view
         Color(0xFF5E1D81)
     ))
     val isCurrentUser = state.userData?.userId == message.senderId
+    val shape = if(isCurrentUser){
+        if(prevId==message.senderId && nextId==message.senderId){
+            RoundedCornerShape(16.dp, 3.dp, 3.dp, 16.dp)
+        }
+        else if(prevId==message.senderId){
+            RoundedCornerShape(16.dp, 16.dp, 3.dp, 16.dp)
+        }
+        else if(nextId==message.senderId){
+            RoundedCornerShape(16.dp, 3.dp, 16.dp, 16.dp)
+        }
+        else{
+            RoundedCornerShape(16.dp, 16.dp, 16.dp, 16.dp)
+        }
+    }
+    else{
+        if(prevId==message.senderId && nextId==message.senderId){
+            RoundedCornerShape(3.dp, 16.dp, 16.dp, 3.dp)
+        }
+        else if(prevId==message.senderId){
+            RoundedCornerShape(16.dp, 16.dp, 16.dp, 3.dp)
+        }
+        else if(nextId==message.senderId){
+            RoundedCornerShape(3.dp, 16.dp, 16.dp, 16.dp)
+        }
+        else{
+            RoundedCornerShape(16.dp, 16.dp, 16.dp, 16.dp)
+        }
+    }
     val color = if (isCurrentUser) brush else  brush2
     val alignment = if (isCurrentUser) Alignment.CenterEnd else Alignment.CenterStart
     val formatter = remember {
@@ -487,13 +438,13 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, view
         modifier = Modifier
             .background(clkcolor)
             //.combinedClickable(
-            //   onLongClick = {
+           //    onLongClick = {
             //  if (!mode) selectionMode(message.msgId) else {
             //      null
             //  }
             //  }, onClick = { if (mode) Selected(message.msgId)  else onClick=!onClick})
             .fillMaxWidth()
-            .padding(vertical = 4.dp, horizontal = 10.dp),
+            .padding(top = 2.dp, bottom = if(message.reaction.toString()!="") 0.dp else 4.dp, start = 10.dp, end = 10.dp),
         contentAlignment = alignment
     ) {
 
@@ -530,14 +481,17 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, view
                 }
                 Text(
                     text = formatter.format(message.time?.toDate()!!),
-                    modifier = Modifier.padding(end = 8.dp, bottom = 5.dp, start = 8.dp, top = 2.dp),
+                    modifier = Modifier.padding(end = 8.dp, bottom = if(message.reaction.toString()!="") 10.dp else 5.dp, start = 8.dp, top = 2.dp),
                     style = MaterialTheme.typography.labelSmall,
                     color = Color.White,
                 )
             }
             AnimatedVisibility(message.reaction.toString()!="") {
                 Text(text = message.reaction.toString(), modifier = Modifier
-                    .offset(y = (-10).dp)
+                    .graphicsLayer(
+                        translationY = (-20).dp.value,
+                        clip = false
+                    )
                     .background(color, CircleShape)
                     .border(
                         BorderStroke(1.5.dp, MaterialTheme.colorScheme.background),
@@ -548,7 +502,7 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, view
             }
         }
         AnimatedVisibility(onClick && !isCurrentUser) {
-            MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(16.dp))) {
+            MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = CircleShape)) {
                 DropdownMenu( offset = DpOffset(50.dp, 30.dp),
                     expanded = onClick,
                     onDismissRequest = { onClick = false },
@@ -564,39 +518,18 @@ fun MessageItem(message: Message, state: AppState, reaction:(String)->Unit, view
                             )
                         }
                     }
-                    DropdownMenuItem(
-                        text = { Text(text = "Copy", style = MaterialTheme.typography.bodyLarge) },
-                        onClick = { val clipboardManager = context.getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                            val clipData: ClipData = ClipData.newPlainText("text", message.content)
-                            clipboardManager.setPrimaryClip(clipData)
-                            Toast.makeText(context, "Message copied", Toast.LENGTH_SHORT).show()
-                            onClick = false
-                        }
-                    )
+                    //DropdownMenuItem(
+                   //     text = { Text(text = "Copy", style = MaterialTheme.typography.bodyLarge) },
+                    //    onClick = { val clipboardManager = context.getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                    //        val clipData: ClipData = ClipData.newPlainText("text", message.content)
+                     //       clipboardManager.setPrimaryClip(clipData)
+                      //      Toast.makeText(context, "Message copied", Toast.LENGTH_SHORT).show()
+                      //      onClick = false
+                      //  }
+                    //)
                 }
             }
 
-        }
-        AnimatedVisibility(onClick && isCurrentUser) {
-            MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(16.dp))) {
-                DropdownMenu( offset = DpOffset(50.dp, 30.dp),
-                    expanded = onClick,
-                    onDismissRequest = { onClick = false },
-                    modifier = Modifier
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(text = "Copy", style = MaterialTheme.typography.bodyLarge) },
-                        onClick = {
-                            val clipboardManager =
-                                context.getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                            val clipData: ClipData = ClipData.newPlainText("text", message.content)
-                            clipboardManager.setPrimaryClip(clipData)
-                            Toast.makeText(context, "Message copied", Toast.LENGTH_SHORT).show()
-                            onClick = false
-                        }
-                    )
-                }
-            }
         }
     }
 

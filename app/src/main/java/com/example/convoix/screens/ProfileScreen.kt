@@ -1,7 +1,17 @@
 package com.example.convoix.screens
 
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,14 +22,19 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,14 +44,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.convoix.AppState
@@ -45,6 +64,7 @@ import com.example.convoix.DeleteDialog
 import com.example.convoix.R
 import com.example.convoix.UserData
 import com.example.convoix.View
+import java.io.ByteArrayOutputStream
 import kotlin.io.path.Path
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,6 +73,7 @@ fun ProfileScreen(
     viewModel: ChatViewModel, state: AppState,
     onSignOut: () -> Unit, navController: NavController
 ) {
+    val context = LocalContext.current
     val user = state.userData
     var editName by remember {
         mutableStateOf(false)
@@ -63,11 +84,52 @@ fun ProfileScreen(
     var editBio by remember {
         mutableStateOf(false)
     }
+    var isLoading by remember {
+        mutableStateOf(false)
+    }
     var name by remember {
         mutableStateOf(user?.username)
     }
     var bio by remember {
         mutableStateOf(user?.bio)
+    }
+    var imgUri by remember {
+        mutableStateOf<Uri?>(null)
+    }
+    val launcher = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()){
+        imgUri = it
+    }
+    var bitmap by remember {
+        mutableStateOf<Bitmap?>(null)
+    }
+    fun compressImage(): ByteArray {
+        val outputStream = ByteArrayOutputStream()
+        bitmap?.compress(Bitmap.CompressFormat.JPEG, 30, outputStream)
+        return outputStream.toByteArray()
+    }
+    imgUri?.let {
+        isLoading = true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val src = ImageDecoder.createSource(context.contentResolver, it)
+            bitmap = ImageDecoder.decodeBitmap(src)
+        }
+        if (bitmap != null) {
+            viewModel.UploadImage(compressImage()) { imageUrl ->
+                viewModel.updateProfile(
+                    userData = UserData(
+                        email = user?.email.toString(),
+                        userId = user?.userId.toString(),
+                        username = name,
+                        bio = bio.toString(),
+                        ppurl = imageUrl
+                    )
+                )
+                imgUri = null
+                isLoading = false
+            }
+        } else {
+            isLoading = false
+        }
     }
     BackHandler {
         if (editName || editBio || viewImage) {
@@ -81,46 +143,71 @@ fun ProfileScreen(
     AnimatedVisibility(viewImage) {
         View(imageUrl = user?.ppurl.toString(), hideDialog = {viewImage=false})
     }
-    Image(
-        painter = painterResource(id = R.drawable.untitled_1),
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
-        colorFilter = if (!isSystemInDarkTheme()) ColorFilter.tint(MaterialTheme.colorScheme.primary) else null
-    )
+    Box{
+        Image(painter = painterResource(id = if(isSystemInDarkTheme()) R.drawable.screen1 else R.drawable.screen),
+            contentDescription = null)
+        IconButton(modifier = Modifier.padding(top = 40.dp, start = 10.dp), onClick = { navController.popBackStack() }) {
+            Icon(imageVector = Icons.Filled.ArrowBackIosNew, contentDescription = null)
+        }
+    }
+
     Column(
-        modifier = Modifier.padding(top = 110.dp)
+        modifier = Modifier
+            .padding(top = 70.dp)
             .fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         user?.ppurl?.let {
-            AsyncImage(
-                model = user.ppurl,
-                contentDescription = "Profile picture",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .shadow(1.dp, shape = CircleShape)
-                    .clickable { viewImage = true }
-                    .size(150.dp)
-                    .border(5.dp, MaterialTheme.colorScheme.background, CircleShape)
-                    .clip(CircleShape)
-            )
+            Column {
+                Box(contentAlignment = Alignment.Center) {
+                    AsyncImage(
+                        model = user.ppurl,
+                        contentDescription = "Profile picture",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.background, CircleShape)
+                            .shadow(1.dp, shape = CircleShape)
+                            .clickable { viewImage = true }
+                            .size(150.dp)
+                            .border(3.dp, MaterialTheme.colorScheme.background, CircleShape)
+                            .clip(CircleShape)
+                    )
+                    if (isLoading){
+                        LoadingItem()
+                    }
+                }
+               // IconButton(onClick = { launcher.launch("image/*") }, modifier = Modifier
+                 //   .size(40.dp)
+                //    .offset(x = 110.dp, y = (-50).dp)
+                //    .background(MaterialTheme.colorScheme.inversePrimary, CircleShape)
+                //    .border(2.dp, MaterialTheme.colorScheme.background, CircleShape)
+                //    .clip(CircleShape)) {
+               //     Icon(imageVector = Icons.Filled.Edit, contentDescription = null,modifier = Modifier.size(20.dp))
+               // }
+            }
+
         }
-        Spacer(modifier = Modifier.height(16.dp))
             if (!editName) {
                 Text(text = user?.username.toString(),
                     modifier = Modifier
+                        .offset(y = (-25).dp)
                         .clickable { editName = true },
                     style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
                     color = Color.White
                 )
             }
-
-            if (editName) {
-                OutlinedTextField(value = name.toString(), onValueChange = { name = it })
+        AnimatedVisibility (editName) {
+                OutlinedTextField(modifier = Modifier
+                    .offset(y = (-25).dp)
+                    .width(250.dp),
+                    value = name.toString(),
+                    onValueChange = { name = it },
+                    shape = CircleShape,
+                    colors = TextFieldDefaults.colors()
+                )
             }
-
-
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(10.dp))
         Text(
             text = user?.email.toString(),
             style = MaterialTheme.typography.bodyLarge,
@@ -128,22 +215,32 @@ fun ProfileScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
         if (!editBio) {
-            Text(text = if (user?.bio.toString() != "") "Bio:\n"+user?.bio.toString() else "No Bio",
-                modifier = Modifier.width(250.dp)
-                    .clickable { editBio = true }
-                    .background(Color.DarkGray, RoundedCornerShape(12.dp))
-                    .padding(12.dp),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (user?.bio.toString() != "") Color.White else Color.LightGray
+            Column( modifier = Modifier
+                .width(250.dp)
+                .background(Color.DarkGray, RoundedCornerShape(12.dp))) {
+                Text(text = if (user?.bio.toString() != "") "Bio:\n"+user?.bio.toString() else "No Bio",
+                    modifier = Modifier
+                        .width(250.dp)
+                        .clickable { editBio = true }
+                        .padding(12.dp),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (user?.bio.toString() != "") Color.White else Color.LightGray
+                )
+            }
+            }
+
+        AnimatedVisibility (editBio) {
+            OutlinedTextField(modifier = Modifier.width(250.dp),
+                value = bio.toString(),
+                onValueChange = { bio = it },
+                shape = CircleShape,
+                colors = TextFieldDefaults.colors()
             )
-        }
-        if (editBio) {
-            OutlinedTextField(value = bio.toString(), onValueChange = { bio = it })
         }
         Spacer(modifier = Modifier.height(16.dp))
         if (editName || editBio) {
-            Button(
+            Button(modifier = Modifier.height(50.dp), shape = CircleShape,
                 onClick = {
                     viewModel.updateProfile(
                         userData = UserData(
@@ -157,7 +254,6 @@ fun ProfileScreen(
                     editBio = false
                     editName = false
                 },
-                modifier = Modifier.fillMaxWidth(0.8f), shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
                     text = "Save",
@@ -167,20 +263,63 @@ fun ProfileScreen(
             }
         }
     }
+    val brush = Brush.linearGradient(listOf(
+        Color(0xFF238CDD),
+        Color(0xFF1952C4)
+    ))
+    val brush2 = Brush.linearGradient(listOf(
+        Color(0xFFA02424),
+        Color(0xFFC43B56)
+    ))
     Column(
         verticalArrangement = Arrangement.Bottom,
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.padding(bottom = 50.dp)
     ) {
+       // Button(
+       //     onClick = { onSignOut() },
+      //      modifier = Modifier
+        //        .background(brush2, CircleShape)
+       //         .fillMaxWidth(0.7f)
+        //        .height(50.dp), colors = ButtonDefaults.buttonColors(Color.Transparent), shape = CircleShape
+      //  ) {
+      //      Text(
+       //         text = "Delete account",
+       //         color = Color.White,
+       //         fontSize = 18.sp,
+       //         fontWeight = FontWeight.SemiBold
+       //     )
+      //  }
+        Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = { onSignOut() },
-            modifier = Modifier.fillMaxWidth(0.8f), shape = RoundedCornerShape(12.dp)
+            modifier = Modifier
+                .background(brush, CircleShape)
+                .fillMaxWidth(0.7f)
+                .height(50.dp), colors = ButtonDefaults.buttonColors(Color.Transparent), shape = CircleShape
         ) {
             Text(
                 text = "Sign Out",
-                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold
             )
         }
+
+    }
+
+}
+
+@Composable
+fun LoadingItem(){
+    Box(modifier = Modifier
+        .wrapContentHeight(),
+        contentAlignment = Alignment.Center){
+        CircularProgressIndicator(
+            modifier = Modifier
+                .size(42.dp)
+                .padding(8.dp),
+            strokeWidth = 5.dp
+        )
     }
 }

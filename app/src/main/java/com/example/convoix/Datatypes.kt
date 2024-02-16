@@ -11,6 +11,7 @@ data class UserData (
     val userId: String = "",
     val username: String? = "",
     val bio: String = "",
+    val token: String = "",
     val ppurl: String = "",
     val email: String = ""
 )

@@ -14,6 +14,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.toObject
+import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import okhttp3.internal.notify
+import org.json.JSONObject
+import java.io.IOException
 import java.util.Calendar
 import java.util.UUID
 
@@ -89,26 +102,32 @@ class ChatViewModel: ViewModel() {
         }
     }
 
-    fun UploadImage(imgUri: Uri?, callback: (String) -> Unit) {
-        val storageRef = storage.reference
-        val uuid = UUID.randomUUID()
-        val imageRef = storageRef.child("images/$uuid")
-        viewModelScope.launch(Dispatchers.IO) {
-            imageRef.putFile(imgUri!!)
-                .addOnSuccessListener {
-                    imageRef.downloadUrl
-                        .addOnSuccessListener { downloadUri ->
-                            val url = downloadUri.toString()
-                            callback(url)
-                        }
-                        .addOnFailureListener {
-                            callback("")
-                        }
-                }
-                .addOnFailureListener {
-                    callback("")
-                }
+    var isImageUploading = false // Variable to track if an upload is in progress
+
+    fun UploadImage(img: ByteArray, callback: (String) -> Unit) {
+        if (isImageUploading) {
+            return
         }
+        isImageUploading = true
+        val storageRef = storage.reference
+        val imageRef = storageRef.child("images/${System.currentTimeMillis()}")
+        imageRef.putBytes(img)
+            .addOnSuccessListener {
+                imageRef.downloadUrl
+                    .addOnSuccessListener { downloadUri ->
+                        val url = downloadUri.toString()
+                        callback(url)
+                    }
+                    .addOnFailureListener {
+                        callback("")
+                    }
+            }
+            .addOnFailureListener {
+                callback("")
+            }
+            .addOnCompleteListener {
+                isImageUploading = false
+            }
 
     }
 
@@ -132,6 +151,7 @@ class ChatViewModel: ViewModel() {
             .addOnFailureListener { e ->
                 Log.e("Firestore Update", "Error updating last message", e)
             }
+        sendNotification(msg)
     }
 
     fun addChat(email: String){
@@ -214,7 +234,7 @@ class ChatViewModel: ViewModel() {
 
     fun updateProfile(userData: UserData) {
         val userDocument = usersCollection.document(userData.userId)
-        userDocument.update("username", userData.username, "bio", userData.bio)
+        userDocument.update("username", userData.username, "bio", userData.bio, "ppurl", userData.ppurl)
         firestore.collection("chats").get()
             .addOnSuccessListener { querySnapshot ->
                 for (document in querySnapshot.documents) {
@@ -222,10 +242,10 @@ class ChatViewModel: ViewModel() {
                     val user2Id = document.getString("user2.userId")
 
                     if (user1Id == userData.userId) {
-                        document.reference.update("user1.username", userData.username, "user1.bio", userData.bio)
+                        document.reference.update("user1.username", userData.username, "user1.bio", userData.bio, "ppurl", userData.ppurl)
                     }
                     if (user2Id == userData.userId) {
-                        document.reference.update("user2.username", userData.username, "user2.bio", userData.bio)
+                        document.reference.update("user2.username", userData.username, "user2.bio", userData.bio, "ppurl", userData.ppurl)
                     }
                 }
             }
@@ -266,18 +286,76 @@ class ChatViewModel: ViewModel() {
     suspend fun typing(t: Boolean, chatId: String, userId: String) {
         val chatRef = firestore.collection("chats").document(chatId)
         val documentSnapshot = chatRef.get().await()
-        val fieldToUpdate = when {
+        val field = when {
             userId == documentSnapshot.getString("user1.userId") -> "user1.typing"
             userId == documentSnapshot.getString("user2.userId") -> "user2.typing"
             else -> return
         }
 
-        chatRef.update(fieldToUpdate, t)
+        chatRef.update(field, t)
     }
     fun deleteMsg(msgIds: List<String>, chatId: String){
         for (id in msgIds){
             firestore.collection("chats").document(chatId).collection("message").document(id).delete()
         }
+    }
+    fun getFCMToken(userId: String){
+        FirebaseMessaging.getInstance().token.addOnCompleteListener {
+            if(it.isSuccessful){
+                val tkn = it.result
+                firestore.collection("users").document(userId).update("token", tkn)
+            }
+        }
+    }
+    fun sendNotification(msg: String){
+
+        usersCollection.document(state.value.User2?.userId.toString()).get()
+            .addOnSuccessListener { documentSnapshot ->
+                if (documentSnapshot.exists()) {
+                    val otherUsrToken = documentSnapshot.getString("token").toString()
+                    val jsonObj = JSONObject()
+                    val notObj = JSONObject()
+                    notObj.put("title", state.value.userData?.username)
+                    notObj.put("body", msg)
+                    val dataObj = JSONObject()
+                    dataObj.put("userId", state.value.userData?.userId)
+                    jsonObj.put("notification", notObj)
+                    jsonObj.put("data", dataObj)
+                    jsonObj.put("to", otherUsrToken)
+                    callApi(jsonObj)
+                } else {
+                    println("Document does not exist")
+                }
+            }
+
+
+    }
+    fun callApi(jsonObj: JSONObject) {
+        val json = "application/json; charset=utf-8".toMediaType()
+        val client = OkHttpClient()
+        val url = "https://fcm.googleapis.com/fcm/send"
+        val body = jsonObj.toString().toRequestBody(json)
+
+        val request = Request.Builder()
+            .url(url)
+            .post(body)
+            .header(
+                "Authorization",
+                "Bearer AAAAlorsm6Q:APA91bFEkuDzNjb3MvyVFVwKRRHW_q8FP3Z3KDDx9386P-WGRDwcyubfbhl0DJSYklaUXevWmEqyGRt-nAZYxK5HLT9StEvGwqrY6yPZI81rdwNPKnuxxPk9wvawtA6E7hyds5lvgwPU"
+            )
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                println("Request failed: ${e.message}")
+                e.printStackTrace()
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                println("Response: $responseBody")
+            }
+        })
     }
     fun resetState() {
         _state.update { AppState() }
@@ -286,15 +364,6 @@ class ChatViewModel: ViewModel() {
     fun showAnim(){
         _state.update { it.copy( showAnim = true) }
     }
-
-    fun setEmail(email: String){
-        _state.update { it.copy( email = email) }
-    }
-
-    fun setPass(pass: String){
-        _state.update { it.copy( pass = pass) }
-    }
-
     fun showDialog(){
         _state.update { it.copy( showDialog=true) }
     }
@@ -304,7 +373,6 @@ class ChatViewModel: ViewModel() {
     fun setSrEmail(email: String){
         _state.update { it.copy( srEmail = email) }
     }
-
     fun setchatUser(usr: ChatUserData, id: String) {
         _state.update { it.copy( User2 = usr, chatId = id ) }
     }

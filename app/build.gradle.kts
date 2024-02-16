@@ -85,21 +85,16 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore:24.10.2")
     implementation("com.google.android.gms:play-services-auth:20.7.0")
     implementation("com.google.firebase:firebase-storage:20.3.0")
-
+    implementation("com.google.firebase:firebase-messaging:23.4.1")
     //Coil
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("io.coil-kt:coil-gif:2.5.0")
     //Icons
     implementation("androidx.compose.material:material-icons-extended:1.6.1")
-    //Insets
-    implementation("com.google.accompanist:accompanist-insets:0.20.0")
-    // cloudy
-    implementation("com.github.skydoves:cloudy:0.1.2")
 
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     implementation("androidx.activity:activity-ktx:1.8.2")
-
-    implementation("id.zelory:compressor:3.0.1")
 
 
 

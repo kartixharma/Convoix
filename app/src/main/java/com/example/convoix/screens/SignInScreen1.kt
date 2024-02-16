@@ -52,8 +52,6 @@ fun SignInScreen1(
                 Text(text = "Continue with Google", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                 Image(painter = painterResource(id = R.drawable.goog_0ed88f7c), contentDescription = null, contentScale = ContentScale.Fit)
             }
-
         }
     }
-
 }

@@ -2,6 +2,7 @@ package com.example.convoix.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -24,7 +25,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddComment
 import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
@@ -35,12 +38,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,14 +65,30 @@ import com.example.convoix.ChatUserData
 import com.example.convoix.ChatViewModel
 import com.example.convoix.CustomDialogBox
 import com.example.convoix.DeleteDialog
-import com.example.convoix.UserData
-import com.skydoves.cloudy.Cloudy
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Composable
 fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: AppState, showSingleChat: (ChatUserData, String) -> Unit){
     val chats = viewModel.chats
+    var searchText by rememberSaveable { mutableStateOf("") }
+    val filteredChats = if (searchText.isBlank()) {
+        chats
+    } else {
+        chats.filter {
+            if(it.user1?.username==state.userData?.username){
+                it.user2?.username.toString().startsWith(searchText, ignoreCase = true)
+            }
+            else{
+                it.user1?.username.toString().startsWith(searchText, ignoreCase = true)
+            }
+
+        }
+    }
+    var showSearch by remember {
+        mutableStateOf(false)
+    }
+    val padding by animateDpAsState(targetValue = if (showSearch) 10.dp else 0.dp)
     var isSelected by remember {
         mutableStateOf(false)
     }
@@ -79,6 +101,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
     var expanded by remember { mutableStateOf(false) }
     var selectedItems = mutableMapOf<Int, Boolean>()
     BackHandler {
+        showSearch=false
         isSelected=false
         selectedItems.clear()
     }
@@ -89,7 +112,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                 shape = RoundedCornerShape(50.dp),
                 containerColor = colorScheme.inversePrimary
             ){
-                Icon(Icons.Filled.Add, contentDescription = "ADD", tint = Color.White)
+                Icon(Icons.Filled.AddComment, contentDescription = "ADD", tint = Color.White)
             }
         }
     ){it->
@@ -112,7 +135,8 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                     setEmail = {viewModel.setSrEmail(it)}
                 )
         }
-        Column(modifier = Modifier.padding(top = 36.dp)) { //.background(colorScheme.primaryContainer)
+        Column(modifier = Modifier
+            .padding(top = 36.dp)) { //.background(colorScheme.primaryContainer)
             Box {
                 this@Column.AnimatedVisibility(
                     isSelected,
@@ -142,7 +166,41 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                         }
                     }
                 }
-                if (!isSelected) {
+                this@Column.AnimatedVisibility(
+                    showSearch,
+                    enter = slideInVertically(),
+                    exit = slideOutVertically()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp)
+                    ) {
+                        OutlinedTextField(
+                            modifier = Modifier.fillMaxWidth(0.8f),
+                            value = searchText,
+                            onValueChange = { searchText = it },
+                            placeholder = { Text(text = "Search") },
+                            shape = CircleShape,
+                            colors = TextFieldDefaults.colors(
+                                unfocusedContainerColor = Color.Transparent.copy(alpha = 0.4f),
+                                focusedContainerColor = Color.Transparent.copy(alpha = 0.4f),
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            ),
+                            trailingIcon = {
+                                if(!searchText.isBlank())
+                                IconButton(onClick = { searchText = ""}) {
+                                    Icon(imageVector = Icons.Filled.Close, contentDescription = null)
+                                }
+
+                            }
+                        )
+                    }
+                }
+                if (!isSelected && !showSearch) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center,
@@ -154,7 +212,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                             style = MaterialTheme.typography.headlineMedium
                         )
                         Spacer(modifier = Modifier.weight(1f))
-                        IconButton(onClick = { }) {
+                        IconButton(onClick = { showSearch = true }) {
                             Icon(
                                 modifier = Modifier.scale(1.3f),
                                 imageVector = Icons.Filled.Search,
@@ -202,9 +260,9 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
             }
 
             LazyColumn(modifier= Modifier
-                .padding()
+                .padding(top = padding)
                 .background(colorScheme.background, RoundedCornerShape(30.dp, 30.dp))){
-                items(chats){
+                items(filteredChats){
                         val chatUser = if(it.user1?.userId!=state.userData?.userId) { it.user1 } else it.user2
                         ChatItem(selectedItems[chats.indexOf(it)], chatUser!!, showSingleChat = { user, id-> showSingleChat(user, id)}, it, showRow = { id->
                             selectedItems[chats.indexOf(it)] = true

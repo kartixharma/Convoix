@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -22,40 +23,60 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.skydoves.cloudy.Cloudy
 
 @Composable
-fun CustomDialogBox(state: AppState, hideDialog: () ->Unit, addChat:()->Unit, setEmail:(String)->Unit){
-    Dialog(onDismissRequest = hideDialog,
+fun CustomDialogBox(
+    state: AppState,
+    hideDialog: () -> Unit,
+    addChat: () -> Unit,
+    setEmail: (String) -> Unit
+) {
+    Dialog(
+        onDismissRequest = hideDialog,
         properties = DialogProperties(
             usePlatformDefaultWidth = false
         )
     ) {
-        Card(elevation = CardDefaults.cardElevation(
-            defaultElevation = 6.dp),
+        Card(
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
             shape = RoundedCornerShape(15.dp),
             modifier = Modifier.fillMaxWidth(0.90f),
             colors = CardDefaults.cardColors(MaterialTheme.colorScheme.background)
         ) {
-            Column( modifier = Modifier
-                .padding(15.dp),
-                verticalArrangement = Arrangement.spacedBy(25.dp)) {
+            Column(
+                modifier = Modifier.padding(15.dp),
+                verticalArrangement = Arrangement.spacedBy(25.dp)
+            ) {
                 Text(
                     text = "Enter Email ID",
                     style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
-                OutlinedTextField(label = { Text(text = "Enter Email" )}, modifier = Modifier.align(Alignment.CenterHorizontally),
+                OutlinedTextField(
+                    label = { Text(text = "Enter Email") },
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
                     value = state.srEmail,
-                    onValueChange = { setEmail(it) } ,
-                    shape = RoundedCornerShape(20.dp))
-                Row {
+                    onValueChange = { setEmail(it) },
+                    shape = RoundedCornerShape(20.dp)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
                     TextButton(onClick = addChat) {
-                        Text(text = "Add", style = MaterialTheme.typography.titleLarge, color = Color(0xFF09a129))
+                        Text(
+                            text = "Add",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                     }
-                    Spacer(Modifier.weight(1f))
+                    Spacer(Modifier.width(16.dp))
                     TextButton(onClick = hideDialog) {
-                        Text(text = "Cancel", style = MaterialTheme.typography.titleLarge, color= MaterialTheme.colorScheme.error)
+                        Text(
+                            text = "Cancel",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             }

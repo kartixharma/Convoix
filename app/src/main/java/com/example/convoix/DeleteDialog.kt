@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.skydoves.cloudy.Cloudy
 
 @Composable
 fun DeleteDialog(hideDialog: () ->Unit, deleteChat:()->Unit){
