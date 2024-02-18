@@ -9,9 +9,12 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -107,44 +111,33 @@ fun ProfileScreen(
         bitmap?.compress(Bitmap.CompressFormat.JPEG, 30, outputStream)
         return outputStream.toByteArray()
     }
-    imgUri?.let {
-        isLoading = true
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            val src = ImageDecoder.createSource(context.contentResolver, it)
-            bitmap = ImageDecoder.decodeBitmap(src)
-        }
-        if (bitmap != null) {
-            viewModel.UploadImage(compressImage()) { imageUrl ->
-                viewModel.updateProfile(
-                    userData = UserData(
-                        email = user?.email.toString(),
-                        userId = user?.userId.toString(),
-                        username = name,
-                        bio = bio.toString(),
-                        ppurl = imageUrl
-                    )
+    fun uploadImage(){
+        viewModel.UploadImage(compressImage()) { imageUrl ->
+            viewModel.updateProfile(
+                userData = UserData(
+                    email = user?.email.toString(),
+                    userId = user?.userId.toString(),
+                    username = name,
+                    bio = bio.toString(),
+                    ppurl = imageUrl
                 )
-                imgUri = null
-                isLoading = false
-            }
-        } else {
+            )
             isLoading = false
         }
+
     }
     BackHandler {
-        if (editName || editBio || viewImage) {
+        if (editName || editBio || viewImage || imgUri!=null) {
             editName = false
             editBio = false
             viewImage = false
+            imgUri = null
         } else {
             navController.popBackStack()
         }
     }
-    AnimatedVisibility(viewImage) {
-        View(imageUrl = user?.ppurl.toString(), hideDialog = {viewImage=false})
-    }
-    Box{
-        Image(painter = painterResource(id = if(isSystemInDarkTheme()) R.drawable.screen1 else R.drawable.screen),
+    Box() {
+        Image(modifier = Modifier.fillMaxWidth(),painter = painterResource(id = if(isSystemInDarkTheme()) R.drawable.screen1 else R.drawable.screen),
             contentDescription = null)
         IconButton(modifier = Modifier.padding(top = 40.dp, start = 10.dp), onClick = { navController.popBackStack() }) {
             Icon(imageVector = Icons.Filled.ArrowBackIosNew, contentDescription = null)
@@ -176,14 +169,14 @@ fun ProfileScreen(
                         LoadingItem()
                     }
                 }
-               // IconButton(onClick = { launcher.launch("image/*") }, modifier = Modifier
-                 //   .size(40.dp)
-                //    .offset(x = 110.dp, y = (-50).dp)
-                //    .background(MaterialTheme.colorScheme.inversePrimary, CircleShape)
-                //    .border(2.dp, MaterialTheme.colorScheme.background, CircleShape)
-                //    .clip(CircleShape)) {
-               //     Icon(imageVector = Icons.Filled.Edit, contentDescription = null,modifier = Modifier.size(20.dp))
-               // }
+                IconButton(onClick = { launcher.launch("image/*") }, modifier = Modifier
+                    .size(40.dp)
+                    .offset(x = 110.dp, y = (-50).dp)
+                    .background(MaterialTheme.colorScheme.inversePrimary, CircleShape)
+                    .border(2.dp, MaterialTheme.colorScheme.background, CircleShape)
+                    .clip(CircleShape)) {
+                   Icon(imageVector = Icons.Filled.Edit, contentDescription = null,modifier = Modifier.size(20.dp))
+                }
             }
 
         }
@@ -197,13 +190,14 @@ fun ProfileScreen(
                     color = Color.White
                 )
             }
-        AnimatedVisibility (editName) {
+        AnimatedVisibility (editName,enter = slideInHorizontally(), exit = ExitTransition.None) {
                 OutlinedTextField(modifier = Modifier
                     .offset(y = (-25).dp)
                     .width(250.dp),
                     value = name.toString(),
                     onValueChange = { name = it },
-                    shape = CircleShape,
+                    placeholder = { Text(text = "Name")},
+                    shape = RoundedCornerShape(12.dp),
                     colors = TextFieldDefaults.colors()
                 )
             }
@@ -216,7 +210,7 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(16.dp))
         if (!editBio) {
             Column( modifier = Modifier
-                .width(250.dp)
+                .fillMaxWidth(0.6f)
                 .background(Color.DarkGray, RoundedCornerShape(12.dp))) {
                 Text(text = if (user?.bio.toString() != "") "Bio:\n"+user?.bio.toString() else "No Bio",
                     modifier = Modifier
@@ -224,17 +218,18 @@ fun ProfileScreen(
                         .clickable { editBio = true }
                         .padding(12.dp),
                     textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = if (user?.bio.toString() != "") Color.White else Color.LightGray
                 )
             }
             }
 
-        AnimatedVisibility (editBio) {
+        AnimatedVisibility (editBio, enter = slideInHorizontally(), exit = ExitTransition.None) {
             OutlinedTextField(modifier = Modifier.width(250.dp),
                 value = bio.toString(),
                 onValueChange = { bio = it },
-                shape = CircleShape,
+                placeholder = { Text(text = "Add bio")},
+                shape = RoundedCornerShape(12.dp),
                 colors = TextFieldDefaults.colors()
             )
         }
@@ -306,6 +301,25 @@ fun ProfileScreen(
             )
         }
 
+    }
+    imgUri?.let {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val src = ImageDecoder.createSource(context.contentResolver, it)
+            bitmap = ImageDecoder.decodeBitmap(src)
+        }
+        Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            Image(bitmap = bitmap?.asImageBitmap()!!, contentDescription = null, modifier = Modifier
+                .fillMaxWidth()
+                .size(400.dp)
+                .padding(10.dp))
+            Button(onClick = { uploadImage(); imgUri = null;isLoading=true  }) {
+                Text(text = "Upload")
+            }
+        }
+
+    }
+    AnimatedVisibility(viewImage) {
+        View(imageUrl = user?.ppurl.toString(), hideDialog = {viewImage=false})
     }
 
 }

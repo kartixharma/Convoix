@@ -97,18 +97,11 @@ class ChatViewModel: ViewModel() {
             if(value!=null){
                     chats = value.documents.mapNotNull {
                         it.toObject<ChatData>()
-                    }
+                    }.sortedBy { it.last?.time }.reversed()
                 }
         }
     }
-
-    var isImageUploading = false // Variable to track if an upload is in progress
-
     fun UploadImage(img: ByteArray, callback: (String) -> Unit) {
-        if (isImageUploading) {
-            return
-        }
-        isImageUploading = true
         val storageRef = storage.reference
         val imageRef = storageRef.child("images/${System.currentTimeMillis()}")
         imageRef.putBytes(img)
@@ -126,7 +119,6 @@ class ChatViewModel: ViewModel() {
                 callback("")
             }
             .addOnCompleteListener {
-                isImageUploading = false
             }
 
     }
@@ -214,7 +206,8 @@ class ChatViewModel: ViewModel() {
             "userId" to userData.userId,
             "username" to userData.username,
             "ppurl" to userData.ppurl,
-            "email" to userData.email
+            "email" to userData.email,
+            "pref" to userData.pref
         )
         userDocument.get().addOnSuccessListener {
             if(it.exists()){
@@ -252,6 +245,10 @@ class ChatViewModel: ViewModel() {
             .addOnFailureListener { e ->
                 Log.e(ContentValues.TAG, "Error getting chats collection", e)
             }
+    }
+    fun updatePref(userData: UserData, pref: Pref) {
+        val userDocument = usersCollection.document(userData.userId)
+        userDocument.update("pref", pref)
     }
 
    fun getUserData(userId: String){

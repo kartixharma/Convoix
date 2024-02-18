@@ -65,8 +65,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -260,9 +262,11 @@ fun Chat(navController: NavController,
         Image(modifier = Modifier
             .fillMaxSize()
             .scale(1.3f)
-            .alpha(if (!isSystemInDarkTheme()) 0.8f else 1f),
-            painter = painterResource(R.drawable.dark),
-            contentDescription = null)
+            .alpha(1f),
+            painter = painterResource(R.drawable.hd_wallpaper_whatsapp_black_abstract_abstract_digital_abstraction_abstracts_background_digital_pattern_texture),
+            contentDescription = null,
+            colorFilter = if(isSystemInDarkTheme()) ColorFilter.tint(MaterialTheme.colorScheme.primaryContainer, blendMode = BlendMode.Softlight)
+            else ColorFilter.tint(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f), blendMode = BlendMode.Color))
         AnimatedVisibility(showDialog) {
             MsgDeleteDialog(selectedItem.size, hideDialog = { showDialog = false }, deleteMsg = {viewModel.deleteMsg(selectedItem, chatId)
                 selectedItem.clear()
@@ -330,8 +334,8 @@ fun Chat(navController: NavController,
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier
-                    .padding(16.dp)
-                    .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)) {
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .background(MaterialTheme.colorScheme.onPrimary, CircleShape)) {
                 TextField(modifier = Modifier.weight(1f), placeholder = { Text(text = "Message")},
                     value = reply,
                     onValueChange = { reply=it },
@@ -366,7 +370,7 @@ fun Chat(navController: NavController,
 
                              }
                     }) {
-                        Icon(imageVector = Icons.Filled.Send, contentDescription = null )
+                        Icon(imageVector = Icons.Filled.Send, contentDescription = null)
                     }
                 }
             }
@@ -393,8 +397,8 @@ fun MessageItem(message: Message,
         Color(0xFF1952C4)
     ))
     val brush2 = Brush.linearGradient(listOf(
-        Color(0xFF42238A),
-        Color(0xFF5E1D81)
+        Color(0xFF2A4783),
+        Color(0xFF2F6086)
     ))
     val isCurrentUser = state.userData?.userId == message.senderId
     val shape = if(isCurrentUser){
@@ -438,16 +442,20 @@ fun MessageItem(message: Message,
         modifier = Modifier
             .background(clkcolor)
             //.combinedClickable(
-           //    onLongClick = {
+            //    onLongClick = {
             //  if (!mode) selectionMode(message.msgId) else {
             //      null
             //  }
             //  }, onClick = { if (mode) Selected(message.msgId)  else onClick=!onClick})
             .fillMaxWidth()
-            .padding(top = 2.dp, bottom = if(message.reaction.toString()!="") 0.dp else 4.dp, start = 10.dp, end = 10.dp),
+            .padding(
+                top = 3.dp,
+                bottom = if (message.reaction.toString() != "") 0.dp else 3.dp,
+                start = 10.dp,
+                end = 10.dp
+            ),
         contentAlignment = alignment
     ) {
-
         Column(verticalArrangement = Arrangement.Bottom) {
             Column(
                 modifier = Modifier
@@ -475,7 +483,7 @@ fun MessageItem(message: Message,
                     Text(
                         text = message.content.toString(),
                         modifier = Modifier.padding(top = 10.dp, start = 10.dp, end = 10.dp),
-                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp),
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = state.userData?.pref?.fontSize.toString().toFloat().sp),
                         color = Color.White
                     )
                 }

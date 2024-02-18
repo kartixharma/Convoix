@@ -20,6 +20,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,8 +32,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.convoix.screens.Chat
 import com.example.convoix.screens.ChatScreen
+import com.example.convoix.screens.Customization
 import com.example.convoix.screens.OtherProfile
 import com.example.convoix.screens.ProfileScreen
+import com.example.convoix.screens.Settings
 import com.example.convoix.screens.SignInScreen1
 import com.example.convoix.ui.theme.ConvoixTheme
 import com.google.android.gms.auth.api.identity.Identity
@@ -47,7 +53,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            ConvoixTheme {
+            var isDark by rememberSaveable {
+                mutableStateOf(true)
+            }
+            ConvoixTheme(darkTheme = isDark) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -95,6 +104,7 @@ class MainActivity : ComponentActivity() {
                                         viewModel.showChats(userData.userId)
                                     }
                                     viewModel.showAnim()
+                                    viewModel.getFCMToken(userData?.userId.toString())
                                     // delay(2000)
                                     navController.navigate("chats")
                                     viewModel.resetState()
@@ -136,7 +146,7 @@ class MainActivity : ComponentActivity() {
                             })
                         }
                         composable("otherprofile") {
-                            OtherProfile(state.User2!!)
+                            OtherProfile(state.User2!!, navController)
                         }
                         composable("profile") {
                             ProfileScreen(viewModel = viewModel, state = state, onSignOut = {
@@ -147,6 +157,24 @@ class MainActivity : ComponentActivity() {
                                }
                             },navController)
 
+                        }
+                        composable("settings",enterTransition = { slideInHorizontally(
+                            initialOffsetX = { fullWidth -> fullWidth },
+                            animationSpec = tween(200)
+                        )}, exitTransition = { slideOutHorizontally(
+                            targetOffsetX = { fullWidth -> fullWidth },
+                            animationSpec = tween(200)
+                        )}){
+                            Settings(navController, changeTheme = {isDark = !isDark}, isDark)
+                        }
+                        composable("cus",enterTransition = { slideInHorizontally(
+                            initialOffsetX = { fullWidth -> fullWidth },
+                            animationSpec = tween(200)
+                        )}, exitTransition = { slideOutHorizontally(
+                            targetOffsetX = { fullWidth -> fullWidth },
+                            animationSpec = tween(200)
+                        )}){
+                            Customization(viewModel, state,  isDark = isDark)
                         }
                     }
                 }

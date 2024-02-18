@@ -1,5 +1,6 @@
 package com.example.convoix
 
+import androidx.compose.ui.unit.TextUnit
 import com.google.firebase.Timestamp
 
 data class SignInResult (
@@ -13,17 +14,15 @@ data class UserData (
     val bio: String = "",
     val token: String = "",
     val ppurl: String = "",
-    val email: String = ""
+    val email: String = "",
+    val pref: Pref = Pref(isDark= false, fontSize = 16f),
 )
 
-data class ChatUserData (
-    val userId: String = "",
-    val typing:Boolean= false,
-    val bio: String = "",
-    val username: String? = "",
-    val ppurl: String = "",
-    val email: String = ""
+data class Pref(
+    val isDark: Boolean = false,
+    val fontSize: Float = 16f
 )
+
 
 data class ChatData (
     val chatId: String = "",
@@ -32,6 +31,8 @@ data class ChatData (
     val user2: ChatUserData? = null
 )
 
+
+
 data class Message(
     val msgId: String = "",
     val senderId: String? = "",
@@ -39,4 +40,16 @@ data class Message(
     val imgUrl: String? = "",
     val content: String?="",
     val time: Timestamp? = Timestamp.now()
+)
+
+
+
+
+data class ChatUserData (
+    val userId: String = "",
+    val typing:Boolean= false,
+    val bio: String = "",
+    val username: String? = "",
+    val ppurl: String = "",
+    val email: String = ""
 )

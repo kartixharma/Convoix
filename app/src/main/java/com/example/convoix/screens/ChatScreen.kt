@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
@@ -54,6 +55,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -65,6 +67,7 @@ import com.example.convoix.ChatUserData
 import com.example.convoix.ChatViewModel
 import com.example.convoix.CustomDialogBox
 import com.example.convoix.DeleteDialog
+import com.example.convoix.R
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -101,6 +104,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
     var expanded by remember { mutableStateOf(false) }
     var selectedItems = mutableMapOf<Int, Boolean>()
     BackHandler {
+        searchText=""
         showSearch=false
         isSelected=false
         selectedItems.clear()
@@ -159,7 +163,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                             )
                         }
                         IconButton(onClick = {
-                            showDialog=true
+                            showDialog = true
                             isSelected = false
                         }) {
                             Icon(imageVector = Icons.Filled.Delete, contentDescription = null)
@@ -187,13 +191,22 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                             colors = TextFieldDefaults.colors(
                                 unfocusedContainerColor = Color.Transparent.copy(alpha = 0.4f),
                                 focusedContainerColor = Color.Transparent.copy(alpha = 0.4f),
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
+                                focusedIndicatorColor = Color.Gray,
+                                unfocusedIndicatorColor = Color.DarkGray,
+                                unfocusedLeadingIconColor = Color.White,
+                                focusedLeadingIconColor = Color.White,
+                                unfocusedTrailingIconColor = Color.White,
+                                focusedTrailingIconColor = Color.White,
+                                focusedPlaceholderColor = Color.White,
+                                unfocusedPlaceholderColor = Color.White,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
                             ),
+                            leadingIcon = {Icon(imageVector = Icons.Rounded.Search, contentDescription = null)},
                             trailingIcon = {
                                 if(!searchText.isBlank())
-                                IconButton(onClick = { searchText = ""}) {
-                                    Icon(imageVector = Icons.Filled.Close, contentDescription = null)
+                                    IconButton(onClick = { searchText = ""}) {
+                                        Icon(imageVector = Icons.Filled.Close, contentDescription = null)
                                 }
 
                             }
@@ -250,7 +263,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                                                 style = MaterialTheme.typography.bodyLarge
                                             )
                                         },
-                                        onClick = {}
+                                        onClick = { navController.navigate("settings") }
                                     )
                                 }
                             }
@@ -293,6 +306,8 @@ fun ChatItem(isSelected: Boolean?, userData: ChatUserData, showSingleChat: (Chat
     ) {
         AsyncImage(
             model = userData.ppurl,
+            placeholder = painterResource(id = R.drawable.person_placeholder_4),
+            error = painterResource(id = R.drawable.person_placeholder_4),
             contentDescription = "Profile picture",
             contentScale = ContentScale.Crop,
             modifier = Modifier

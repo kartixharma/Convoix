@@ -29,7 +29,7 @@ fun SignInScreen1(
     state: AppState,
     onSignInCLick:() -> Unit,
 ){
-    val context= LocalContext.current
+    val context = LocalContext.current
     LaunchedEffect(key1 = state.signInError){
         state.signInError?.let { error ->
             Toast.makeText(
