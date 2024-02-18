@@ -30,14 +30,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.InsertPhoto
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -90,6 +93,8 @@ import com.example.convoix.Message
 import com.example.convoix.MsgDeleteDialog
 import com.example.convoix.R
 import com.example.convoix.View
+import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
@@ -259,7 +264,7 @@ fun Chat(navController: NavController,
             )
         }
     ) {it->
-        Image(modifier = Modifier
+        Image(modifier = Modifier.alpha(state.userData?.pref?.back.toString().toFloat())
             .fillMaxSize()
             .scale(1.3f)
             .alpha(1f),
@@ -277,18 +282,12 @@ fun Chat(navController: NavController,
         AnimatedVisibility(imageUrl!="") {
             View(imageUrl = imageUrl, hideDialog = {imageUrl=""})
         }
-        imgUri?.let {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                val src = ImageDecoder.createSource(context.contentResolver,it)
-                bitmap = ImageDecoder.decodeBitmap(src)
-            }
-            Image(bitmap = bitmap?.asImageBitmap()!!, contentDescription = null, modifier = Modifier
-                .fillMaxWidth()
-                .size(300.dp)
-                .background(MaterialTheme.colorScheme.secondaryContainer)
-                .padding(10.dp))
-
+        fun compressImage(): ByteArray {
+            val outputStream = ByteArrayOutputStream()
+            bitmap?.compress(Bitmap.CompressFormat.JPEG, 30, outputStream)
+            return outputStream.toByteArray()
         }
+
         Column(
             modifier = Modifier
                 .padding(it)
@@ -319,7 +318,7 @@ fun Chat(navController: NavController,
                     MessageItem(
                         message = message,
                         state, viewImage = {imageUrl = it},
-                        reaction = { viewModel.Reaction(it, chatId, message.msgId) },
+                        reaction = {viewModel.Reaction(it, chatId, message.msgId)},
                         selectionMode = { selectionMode = true
                                         selectedItem.add(it)},
                         mode = selectionMode,
@@ -330,6 +329,18 @@ fun Chat(navController: NavController,
                         )
                 }
             }
+            imgUri?.let {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    val src = ImageDecoder.createSource(context.contentResolver,it)
+                    bitmap = ImageDecoder.decodeBitmap(src)
+                }
+                Image(bitmap = bitmap?.asImageBitmap()!!, contentDescription = null, modifier = Modifier
+                    .fillMaxWidth()
+                    .size(300.dp)
+                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                    .padding(10.dp))
+
+            }
 
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
@@ -339,14 +350,14 @@ fun Chat(navController: NavController,
                 TextField(modifier = Modifier.weight(1f), placeholder = { Text(text = "Message")},
                     value = reply,
                     onValueChange = { reply=it },
-                   // trailingIcon = {
-                    //    IconButton(onClick = { launcher.launch("image/*") }) {
-                    //        Icon(
-                    //            imageVector = Icons.Filled.InsertPhoto,
-                    //            contentDescription = null
-                    //        )
-                   //     }
-                   // },
+                    trailingIcon = {
+                        IconButton(onClick = { launcher.launch("image/*") }) {
+                            Icon(
+                                imageVector = Icons.Filled.InsertPhoto,
+                                contentDescription = null
+                            )
+                        }
+                    },
                     colors = TextFieldDefaults.colors(
                         unfocusedContainerColor = Color.Transparent,
                         focusedContainerColor = Color.Transparent,
@@ -360,13 +371,13 @@ fun Chat(navController: NavController,
                             viewModel.sendReply(msg = reply, chatId = chatId, imgUrl = "")
                             reply = ""
                         } else {
-                            //scope.launch {
-                           //     viewModel.UploadImage(imgUri!!) { imageUrl ->
-                           //         viewModel.sendReply(chatId = chatId, msg = reply, imgUrl = imageUrl)
-                           //     }
-                           //     reply = ""
-                            //    imgUri = null
-                          //  }
+                            scope.launch {
+                                viewModel.UploadImage(compressImage()) { imageUrl ->
+                                    viewModel.sendReply(chatId = chatId, msg = reply, imgUrl = imageUrl)
+                                }
+                                reply = ""
+                                imgUri = null
+                            }
 
                              }
                     }) {
@@ -472,9 +483,9 @@ fun MessageItem(message: Message,
                         modifier = Modifier
                             .clickable { viewImage(message.imgUrl.toString()) }
                             .aspectRatio(16f / 9f)
-                            .padding(7.dp)
+                            .padding(6.dp)
                             .clip(
-                                RoundedCornerShape(12.dp)
+                                RoundedCornerShape(10.dp)
                             )
                             .size(60.dp)
                     )
@@ -537,12 +548,9 @@ fun MessageItem(message: Message,
                     //)
                 }
             }
-
         }
     }
-
 }
-
 
 @Composable
 fun loading(){
@@ -562,6 +570,19 @@ fun loading(){
             contentDescription = null, modifier = Modifier
                 .scale(1.3f)
                 .size(70.dp)
+        )
+    }
+}
+@Composable
+fun LoadingItemm(){
+    Box(modifier = Modifier
+        .wrapContentHeight(),
+        contentAlignment = Alignment.Center){
+        CircularProgressIndicator(
+            modifier = Modifier
+                .size(42.dp)
+                .padding(8.dp),
+            strokeWidth = 5.dp
         )
     }
 }

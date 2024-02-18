@@ -20,7 +20,8 @@ data class UserData (
 
 data class Pref(
     val isDark: Boolean = false,
-    val fontSize: Float = 16f
+    val fontSize: Float = 16f,
+    val back: Float = 1f
 )
 
 

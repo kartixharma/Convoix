@@ -42,11 +42,6 @@ import com.skydoves.cloudy.Cloudy
 
 @Composable
 fun View(imageUrl: String, hideDialog: () ->Unit){
-    Cloudy(radius = 25) {
-        Column(modifier = Modifier
-            .fillMaxSize()) {
-        }
-    }
     Dialog(onDismissRequest = hideDialog,
         properties = DialogProperties(
             usePlatformDefaultWidth = false

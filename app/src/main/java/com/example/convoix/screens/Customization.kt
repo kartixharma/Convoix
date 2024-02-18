@@ -1,5 +1,6 @@
 package com.example.convoix.screens
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpOffset
@@ -62,6 +65,7 @@ import com.example.convoix.R
 @Composable
 fun Customization(viewModel: ChatViewModel, state: AppState, isDark: Boolean) {
     var sliderPosition by remember { mutableFloatStateOf(state.userData?.pref?.fontSize.toString().toFloat()) }
+    var bsliderPosition by remember { mutableFloatStateOf(state.userData?.pref?.back.toString().toFloat()) }
     val size = sliderPosition.sp
     val brush = Brush.linearGradient(listOf(
         Color(0xFF238CDD),
@@ -71,22 +75,25 @@ fun Customization(viewModel: ChatViewModel, state: AppState, isDark: Boolean) {
         Color(0xFF2A4783),
         Color(0xFF2F6086)
     ))
+    val context = LocalContext.current
     Column(modifier = Modifier
         .fillMaxSize()
         .padding(top = 80.dp)
-        .padding(horizontal = 20.dp)) {
+        .padding(horizontal = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Box(modifier = Modifier
-            .background(Color.Blue, RoundedCornerShape(16.dp))
+            .border(
+                1.dp,
+                MaterialTheme.colorScheme.inversePrimary,
+                RoundedCornerShape(16.dp)
+            )
+            .background(MaterialTheme.colorScheme.background, RoundedCornerShape(16.dp))
             .height(200.dp),
             contentAlignment = Alignment.BottomCenter ) {
             Image(
-                modifier = Modifier
+                modifier = Modifier.alpha(bsliderPosition)
                     .fillMaxSize()
-                    .border(
-                        1.dp,
-                        MaterialTheme.colorScheme.inversePrimary,
-                        RoundedCornerShape(16.dp)
-                    )
                     .clip(RoundedCornerShape(16.dp)),
                 contentScale = ContentScale.Crop,
                 painter = painterResource(R.drawable.hd_wallpaper_whatsapp_black_abstract_abstract_digital_abstraction_abstracts_background_digital_pattern_texture),
@@ -139,8 +146,53 @@ fun Customization(viewModel: ChatViewModel, state: AppState, isDark: Boolean) {
                 )
             }
         }
-        Button(onClick = { viewModel.updatePref(state.userData!!, Pref(fontSize = sliderPosition, isDark = isDark))}) {
-            Text(text = "Save preferences")
+        Row(modifier = Modifier
+            .padding(top = 20.dp)
+            .shadow(5.dp, RoundedCornerShape(12.dp))
+            .background(
+                if (isDark) Color.DarkGray else Color.LightGray,
+                RoundedCornerShape(12.dp)
+            ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 15.dp)
+            ) {
+                Text(
+                    text = "background",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 10.dp)
+                )
+                Slider(
+                    value = bsliderPosition,
+                    onValueChange = { bsliderPosition = it },
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.secondary,
+                        activeTrackColor = MaterialTheme.colorScheme.secondary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.secondaryContainer
+                    ),
+                )
+            }
+        }
+        Spacer(modifier = Modifier.weight(1f))
+        Button(
+            onClick = { viewModel.updatePref(state.userData!!, Pref(fontSize = sliderPosition, isDark = isDark, back = bsliderPosition))
+                Toast.makeText(context, "Preferences saved", Toast.LENGTH_SHORT).show()},
+            modifier = Modifier
+                .padding(bottom = 30.dp)
+                .background(brush, CircleShape)
+                .fillMaxWidth(0.7f)
+                .height(50.dp), colors = ButtonDefaults.buttonColors(Color.Transparent), shape = CircleShape
+        ) {
+            Text(
+                text = "Save preferences",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }
