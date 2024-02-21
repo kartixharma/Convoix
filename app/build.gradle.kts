@@ -98,6 +98,8 @@ dependencies {
 
     implementation("com.github.skydoves:cloudy:0.1.2")
 
+    implementation("com.airbnb.android:lottie-compose:6.0.0")
+
 
 
 

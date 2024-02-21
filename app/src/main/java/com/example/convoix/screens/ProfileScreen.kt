@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -38,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -52,6 +54,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieClipSpec
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieAnimatable
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.convoix.AppState
 import com.example.convoix.ChatViewModel
 import com.example.convoix.R
@@ -65,6 +73,7 @@ fun ProfileScreen(
     viewModel: ChatViewModel, state: AppState,
     onSignOut: () -> Unit, navController: NavController
 ) {
+    val comp by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.upload))
     val context = LocalContext.current
     val user = state.userData
     var editName by remember {
@@ -150,11 +159,13 @@ fun ProfileScreen(
                             .shadow(1.dp, shape = CircleShape)
                             .clickable { viewImage = true }
                             .size(150.dp)
-                            .border(3.dp, MaterialTheme.colorScheme.background, CircleShape)
                             .clip(CircleShape)
+                            .border(3.dp, MaterialTheme.colorScheme.background, CircleShape)
                     )
                     if (isLoading){
-                        LoadingItem()
+                        Column(modifier = Modifier.background(Color.DarkGray.copy(alpha = 0.7f), CircleShape).size(150.dp)) {
+                        }
+                        LottieAnimation(composition = comp, iterations = LottieConstants.IterateForever)
                     }
                 }
                 IconButton(onClick = { launcher.launch("image/*") }, modifier = Modifier
@@ -310,18 +321,4 @@ fun ProfileScreen(
         View(imageUrl = user?.ppurl.toString(), hideDialog = {viewImage=false})
     }
 
-}
-
-@Composable
-fun LoadingItem(){
-    Box(modifier = Modifier
-        .wrapContentHeight(),
-        contentAlignment = Alignment.Center){
-        CircularProgressIndicator(
-            modifier = Modifier
-                .size(42.dp)
-                .padding(8.dp),
-            strokeWidth = 5.dp
-        )
-    }
 }

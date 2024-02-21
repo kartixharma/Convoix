@@ -296,6 +296,15 @@ class ChatViewModel: ViewModel() {
             firestore.collection("chats").document(chatId).collection("message").document(id).delete()
         }
     }
+    fun clearChat(chatId: String){
+        firestore.collection("chats").document(chatId).collection("message").get()
+            .addOnSuccessListener { querySnapshot ->
+                for (document in querySnapshot.documents) {
+                    document.reference.delete()
+                }
+            }
+        firestore.collection("chats").document(chatId).update("last", Message(time = null))
+    }
     fun getFCMToken(userId: String){
         FirebaseMessaging.getInstance().token.addOnCompleteListener {
             if(it.isSuccessful){
@@ -305,7 +314,6 @@ class ChatViewModel: ViewModel() {
         }
     }
     fun sendNotification(msg: String){
-
         usersCollection.document(state.value.User2?.userId.toString()).get()
             .addOnSuccessListener { documentSnapshot ->
                 if (documentSnapshot.exists()) {

@@ -83,7 +83,7 @@ fun Settings(navController: NavController, changeTheme:()->Unit, isDark: Boolean
             isDark,
             title = "Customization",
             description = "Customize your chat screen",
-            onClick = { navController.navigate("cus") },
+            onClick = {}, // navController.navigate("cus")
             painter = painterResource(R.drawable.equalizer)
         )
         SettingOption(

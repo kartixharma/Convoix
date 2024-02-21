@@ -16,7 +16,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,7 +29,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,7 +38,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.InsertPhoto
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -65,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
@@ -86,6 +84,10 @@ import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.convoix.AppState
 import com.example.convoix.ChatUserData
 import com.example.convoix.ChatViewModel
@@ -93,9 +95,10 @@ import com.example.convoix.Message
 import com.example.convoix.MsgDeleteDialog
 import com.example.convoix.R
 import com.example.convoix.View
-import kotlinx.coroutines.launch
+import com.example.convoix.clearChatDialog
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,6 +109,9 @@ fun Chat(navController: NavController,
          chatId:String, state: AppState,
          onBack:()->Unit
 ) {
+    var isLoading by remember {
+        mutableStateOf(false)
+    }
     var reply by rememberSaveable {
         mutableStateOf("")
     }
@@ -127,6 +133,9 @@ fun Chat(navController: NavController,
     var showDialog by remember {
         mutableStateOf(false)
     }
+    var clearChatDialog by remember {
+        mutableStateOf(false)
+    }
     var imageUrl by remember {
         mutableStateOf("")
     }
@@ -144,7 +153,9 @@ fun Chat(navController: NavController,
         viewModel.popMessage(state.chatId)
     }
     BackHandler {
-        if(selectionMode){
+        if(selectionMode || showDialog || clearChatDialog){
+            showDialog = false
+            clearChatDialog = false
             selectionMode = false
             selectedItem.clear()
         }
@@ -159,7 +170,7 @@ fun Chat(navController: NavController,
     Scaffold(modifier = Modifier,
         topBar = {
             TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.onPrimary),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.onPrimary), //FF4A275F
                         title = {
                             if(!selectionMode){
                                 Row(
@@ -226,12 +237,23 @@ fun Chat(navController: NavController,
                                                 DropdownMenuItem(
                                                     text = {
                                                         Text(
-                                                            text = " ",
+                                                            text = "Block user",
                                                             style = MaterialTheme.typography.bodyLarge
                                                         )
                                                     },
-                                                    onClick = {}
+                                                    onClick = {  }
                                                 )
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            text = "Clear chat",
+                                                            style = MaterialTheme.typography.bodyLarge
+                                                        )
+                                                    },
+                                                    onClick = { clearChatDialog=true; expanded=false
+                                                    }
+                                                )
+
                                             }
                                         }
                                     }
@@ -264,7 +286,12 @@ fun Chat(navController: NavController,
             )
         }
     ) {it->
-        Image(modifier = Modifier.alpha(state.userData?.pref?.back.toString().toFloat())
+        Image(modifier = Modifier
+            .alpha(
+                state.userData?.pref?.back
+                    .toString()
+                    .toFloat()
+            )
             .fillMaxSize()
             .scale(1.3f)
             .alpha(1f),
@@ -279,6 +306,9 @@ fun Chat(navController: NavController,
                 selectionMode = false
             })
         }
+        AnimatedVisibility(clearChatDialog) {
+            clearChatDialog(hideDialog = { clearChatDialog = false}, clearChat = { viewModel.clearChat(chatId); clearChatDialog=false })
+        }
         AnimatedVisibility(imageUrl!="") {
             View(imageUrl = imageUrl, hideDialog = {imageUrl=""})
         }
@@ -287,7 +317,6 @@ fun Chat(navController: NavController,
             bitmap?.compress(Bitmap.CompressFormat.JPEG, 30, outputStream)
             return outputStream.toByteArray()
         }
-
         Column(
             modifier = Modifier
                 .padding(it)
@@ -341,7 +370,9 @@ fun Chat(navController: NavController,
                     .padding(10.dp))
 
             }
-
+            if(isLoading){
+                Upload(content = reply, state = state, bitmap)
+            }
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier
@@ -350,14 +381,14 @@ fun Chat(navController: NavController,
                 TextField(modifier = Modifier.weight(1f), placeholder = { Text(text = "Message")},
                     value = reply,
                     onValueChange = { reply=it },
-                    trailingIcon = {
-                        IconButton(onClick = { launcher.launch("image/*") }) {
-                            Icon(
-                                imageVector = Icons.Filled.InsertPhoto,
-                                contentDescription = null
-                            )
-                        }
-                    },
+                   // trailingIcon = {
+                  //     IconButton(onClick = { launcher.launch("image/*") }) {
+                   //        Icon(
+                   //             imageVector = Icons.Filled.InsertPhoto,
+                   //             contentDescription = null
+                   //         )
+                   //     }
+                  //  },
                     colors = TextFieldDefaults.colors(
                         unfocusedContainerColor = Color.Transparent,
                         focusedContainerColor = Color.Transparent,
@@ -371,14 +402,13 @@ fun Chat(navController: NavController,
                             viewModel.sendReply(msg = reply, chatId = chatId, imgUrl = "")
                             reply = ""
                         } else {
-                            scope.launch {
+                            isLoading=true
                                 viewModel.UploadImage(compressImage()) { imageUrl ->
                                     viewModel.sendReply(chatId = chatId, msg = reply, imgUrl = imageUrl)
+                                    isLoading=false
                                 }
                                 reply = ""
                                 imgUri = null
-                            }
-
                              }
                     }) {
                         Icon(imageVector = Icons.Filled.Send, contentDescription = null)
@@ -401,7 +431,6 @@ fun MessageItem(message: Message,
                 isSelected: Boolean,
                 prevId: String,
                 nextId: String
-
 ) {
     val brush = Brush.linearGradient(listOf(
         Color(0xFF238CDD),
@@ -410,6 +439,14 @@ fun MessageItem(message: Message,
     val brush2 = Brush.linearGradient(listOf(
         Color(0xFF2A4783),
         Color(0xFF2F6086)
+    ))
+    val brush3 = Brush.linearGradient(listOf(
+        Color(0xFF9465FF),
+        Color(0xFF6723D1)
+    ))
+    val brush4 = Brush.linearGradient(listOf(
+        Color(0xFF54308D),
+        Color(0xFF5E449B)
     ))
     val isCurrentUser = state.userData?.userId == message.senderId
     val shape = if(isCurrentUser){
@@ -553,6 +590,79 @@ fun MessageItem(message: Message,
 }
 
 @Composable
+fun Upload(
+    content: String, state: AppState, bitmap: Bitmap?
+) {
+    val comp by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.upload))
+    val brush = Brush.linearGradient(listOf(
+        Color(0xFF238CDD),
+        Color(0xFF1952C4)
+    ))
+    val formatter = remember {
+        SimpleDateFormat(("hh:mm a"), Locale.getDefault())
+    }
+    Box(
+        modifier = Modifier
+            .background(Color.Transparent)
+            .fillMaxWidth()
+            .padding(
+                top = 3.dp,
+                bottom = 3.dp,
+                start = 10.dp,
+                end = 10.dp
+            ),
+        contentAlignment = Alignment.CenterEnd
+    ) {
+        Column(verticalArrangement = Arrangement.Bottom) {
+            Column(
+                modifier = Modifier
+                    .shadow(2.dp, RoundedCornerShape(16.dp))
+                    .widthIn(max = 270.dp)
+                    .background(brush, RoundedCornerShape(16.dp)), horizontalAlignment = Alignment.End
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Image(
+                        bitmap = bitmap?.asImageBitmap()!!,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .aspectRatio(16f / 9f)
+                            .padding(6.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .blur(5.dp)
+                            .size(60.dp)
+                    )
+                    Column(modifier = Modifier
+                        .aspectRatio(16f / 9f)
+                        .padding(6.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .blur(5.dp)
+                        .background(Color.DarkGray.copy(alpha = 0.3f))
+                        .size(60.dp)) {
+
+                    }
+                    LottieAnimation(composition = comp, iterations = LottieConstants.IterateForever)
+                }
+                if(content!=""){
+                    Text(
+                        text =content,
+                        modifier = Modifier.padding(top = 10.dp, start = 10.dp, end = 10.dp),
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = state.userData?.pref?.fontSize.toString().toFloat().sp),
+                        color = Color.White
+                    )
+                }
+                Text(
+                    text = formatter.format(Calendar.getInstance().time),
+                    modifier = Modifier.padding(end = 8.dp, bottom = 5.dp, start = 8.dp, top = 2.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun loading(){
     val context = LocalContext.current
     val imageLoader = ImageLoader.Builder(context)
@@ -570,19 +680,6 @@ fun loading(){
             contentDescription = null, modifier = Modifier
                 .scale(1.3f)
                 .size(70.dp)
-        )
-    }
-}
-@Composable
-fun LoadingItemm(){
-    Box(modifier = Modifier
-        .wrapContentHeight(),
-        contentAlignment = Alignment.Center){
-        CircularProgressIndicator(
-            modifier = Modifier
-                .size(42.dp)
-                .padding(8.dp),
-            strokeWidth = 5.dp
         )
     }
 }

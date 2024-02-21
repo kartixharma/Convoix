@@ -40,6 +40,7 @@ import com.example.convoix.screens.SignInScreen1
 import com.example.convoix.ui.theme.ConvoixTheme
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -105,7 +106,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                     viewModel.showAnim()
                                     viewModel.getFCMToken(userData?.userId.toString())
-                                    // delay(2000)
+                                    delay(1500)
                                     navController.navigate("chats")
                                     viewModel.resetState()
                                     viewModel.getUserData(userData?.userId.toString())
