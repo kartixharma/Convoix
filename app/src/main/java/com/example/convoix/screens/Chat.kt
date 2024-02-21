@@ -35,7 +35,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.InsertPhoto
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.DropdownMenu
@@ -91,11 +90,11 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.convoix.AppState
 import com.example.convoix.ChatUserData
 import com.example.convoix.ChatViewModel
+import com.example.convoix.ClearChatDialog
 import com.example.convoix.Message
 import com.example.convoix.MsgDeleteDialog
 import com.example.convoix.R
 import com.example.convoix.View
-import com.example.convoix.clearChatDialog
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -307,7 +306,7 @@ fun Chat(navController: NavController,
             })
         }
         AnimatedVisibility(clearChatDialog) {
-            clearChatDialog(hideDialog = { clearChatDialog = false}, clearChat = { viewModel.clearChat(chatId); clearChatDialog=false })
+            ClearChatDialog(hideDialog = { clearChatDialog = false}, clearChat = { viewModel.clearChat(chatId); clearChatDialog=false })
         }
         AnimatedVisibility(imageUrl!="") {
             View(imageUrl = imageUrl, hideDialog = {imageUrl=""})

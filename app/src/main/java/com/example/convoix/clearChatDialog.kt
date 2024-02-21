@@ -22,7 +22,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
 @Composable
-fun clearChatDialog(hideDialog: () ->Unit, clearChat:()->Unit){
+fun ClearChatDialog(hideDialog: () ->Unit, clearChat:()->Unit){
     Dialog(onDismissRequest = hideDialog,
         properties = DialogProperties(
             usePlatformDefaultWidth = false

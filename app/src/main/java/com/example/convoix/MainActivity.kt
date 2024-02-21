@@ -1,9 +1,6 @@
 package com.example.convoix
 
 import android.os.Bundle
-import android.util.Log
-import android.view.WindowManager
-import android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -21,7 +18,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -39,7 +35,6 @@ import com.example.convoix.screens.Settings
 import com.example.convoix.screens.SignInScreen1
 import com.example.convoix.ui.theme.ConvoixTheme
 import com.google.android.gms.auth.api.identity.Identity
-import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
