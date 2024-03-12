@@ -92,7 +92,7 @@ import com.example.convoix.ChatUserData
 import com.example.convoix.ChatViewModel
 import com.example.convoix.ClearChatDialog
 import com.example.convoix.Message
-import com.example.convoix.MsgDeleteDialog
+import com.example.convoix.Dialogs.MsgDeleteDialog
 import com.example.convoix.R
 import com.example.convoix.View
 import java.io.ByteArrayOutputStream
@@ -285,19 +285,10 @@ fun Chat(navController: NavController,
             )
         }
     ) {it->
-        Image(modifier = Modifier
-            .alpha(
-                state.userData?.pref?.back
-                    .toString()
-                    .toFloat()
-            )
-            .fillMaxSize()
-            .scale(1.3f)
-            .alpha(1f),
-            painter = painterResource(R.drawable.hd_wallpaper_whatsapp_black_abstract_abstract_digital_abstraction_abstracts_background_digital_pattern_texture),
+        Image(modifier = Modifier.fillMaxSize(),
+            painter = painterResource(R.drawable.blurry_gradient_haikei),
             contentDescription = null,
-            colorFilter = if(isSystemInDarkTheme()) ColorFilter.tint(MaterialTheme.colorScheme.primaryContainer, blendMode = BlendMode.Softlight)
-            else ColorFilter.tint(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f), blendMode = BlendMode.Color))
+            contentScale = ContentScale.Crop)
         AnimatedVisibility(showDialog) {
             MsgDeleteDialog(selectedItem.size, hideDialog = { showDialog = false }, deleteMsg = {viewModel.deleteMsg(selectedItem, chatId)
                 selectedItem.clear()
@@ -380,13 +371,13 @@ fun Chat(navController: NavController,
                 TextField(modifier = Modifier.weight(1f), placeholder = { Text(text = "Message")},
                     value = reply,
                     onValueChange = { reply=it },
-                   // trailingIcon = {
-                  //     IconButton(onClick = { launcher.launch("image/*") }) {
-                   //        Icon(
-                   //             imageVector = Icons.Filled.InsertPhoto,
-                   //             contentDescription = null
-                   //         )
-                   //     }
+                    //trailingIcon = {
+                    //   IconButton(onClick = { launcher.launch("image/*") }) {
+                      //     Icon(
+                    //            imageVector = Icons.Filled.InsertPhoto,
+                     //           contentDescription = null
+                     //       )
+                    //    }
                   //  },
                     colors = TextFieldDefaults.colors(
                         unfocusedContainerColor = Color.Transparent,
@@ -401,14 +392,14 @@ fun Chat(navController: NavController,
                             viewModel.sendReply(msg = reply, chatId = chatId, imgUrl = "")
                             reply = ""
                         } else {
-                            isLoading=true
-                                viewModel.UploadImage(compressImage()) { imageUrl ->
-                                    viewModel.sendReply(chatId = chatId, msg = reply, imgUrl = imageUrl)
-                                    isLoading=false
-                                }
+                            isLoading = true
+                            viewModel.UploadImage(compressImage()) { imageUrl ->
+                                viewModel.sendReply(chatId = chatId, msg = reply, imgUrl = imageUrl)
+                                isLoading = false
                                 reply = ""
-                                imgUri = null
-                             }
+                            }
+                            imgUri = null
+                        }
                     }) {
                         Icon(imageVector = Icons.Filled.Send, contentDescription = null)
                     }

@@ -15,7 +15,8 @@ data class UserData (
     val token: String = "",
     val ppurl: String = "",
     val email: String = "",
-    val pref: Pref = Pref(isDark= false, fontSize = 16f),
+    val pref: Pref = Pref(),
+    val blockedUser: List<String> = listOf()
 )
 
 data class Pref(
@@ -53,5 +54,6 @@ data class ChatUserData (
     val bio: String = "",
     val username: String? = "",
     val ppurl: String = "",
-    val email: String = ""
+    val email: String = "",
+    val status: Boolean = false
 )

@@ -226,10 +226,10 @@ class ChatViewModel: ViewModel() {
                     val user2Id = document.getString("user2.userId")
 
                     if (user1Id == userData.userId) {
-                        document.reference.update("user1.username", userData.username, "user1.bio", userData.bio, "ppurl", userData.ppurl)
+                        document.reference.update("user1.username", userData.username, "user1.bio", userData.bio, "user1.ppurl", userData.ppurl)
                     }
                     if (user2Id == userData.userId) {
-                        document.reference.update("user2.username", userData.username, "user2.bio", userData.bio, "ppurl", userData.ppurl)
+                        document.reference.update("user2.username", userData.username, "user2.bio", userData.bio, "user1.ppurl", userData.ppurl)
                     }
                 }
             }
@@ -353,6 +353,24 @@ class ChatViewModel: ViewModel() {
             }
         })
     }
+
+    fun updateStatus(status: Boolean){
+        firestore.collection("chats").get()
+            .addOnSuccessListener { querySnapshot ->
+                for (document in querySnapshot.documents) {
+                    val user1Id = document.getString("user1.userId")
+                    val user2Id = document.getString("user2.userId")
+
+                    if (user1Id == state.value.userData?.userId) {
+                        document.reference.update("user1.status", status)
+                    }
+                    if (user2Id == state.value.userData?.userId) {
+                        document.reference.update("user2.status", status)
+                    }
+                }
+            }
+    }
+
     fun resetState() {
         _state.update { AppState() }
     }

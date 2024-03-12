@@ -45,6 +45,7 @@ android {
     }
     kotlinOptions {
         jvmTarget = "1.8"
+        freeCompilerArgs += listOf("-Xskip-prerelease-check")
     }
     buildFeatures {
         compose = true
@@ -99,6 +100,11 @@ dependencies {
     implementation("com.github.skydoves:cloudy:0.1.2")
 
     implementation("com.airbnb.android:lottie-compose:6.0.0")
+
+    implementation("androidx.work:work-runtime:2.9.0")
+
+    implementation("com.github.prime-zs.toolkit:core-ktx:2.0.2-alpha")
+
 
 
 

@@ -1,5 +1,6 @@
 package com.example.convoix
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -8,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -21,11 +23,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.example.convoix.screens.Chat
 import com.example.convoix.screens.ChatScreen
 import com.example.convoix.screens.Customization
@@ -45,6 +51,15 @@ class MainActivity : ComponentActivity() {
             oneTapClient = Identity.getSignInClient(applicationContext)
         )
     }
+    private val viewModel: ChatViewModel by viewModels()
+    override fun onPause() {
+        super.onPause()
+        viewModel.updateStatus(false)
+    }
+    override fun onResume() {
+        super.onResume()
+        viewModel.updateStatus(true)
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -57,7 +72,6 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val viewModel = viewModel<ChatViewModel>()
                     val state by viewModel.state.collectAsState()
                     val navController = rememberNavController()
                     NavHost(navController = navController,
@@ -69,6 +83,7 @@ class MainActivity : ComponentActivity() {
                                     viewModel.getFCMToken(userData.userId)
                                     viewModel.getUserData(userData.userId)
                                     viewModel.showChats(userData.userId)
+                                    viewModel.updateStatus(true)
                                     navController.navigate("chats")
                                 } else {
                                     navController.navigate("signIn")

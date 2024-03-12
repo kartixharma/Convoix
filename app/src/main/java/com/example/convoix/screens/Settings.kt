@@ -1,5 +1,6 @@
 package com.example.convoix.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -29,6 +31,12 @@ import com.example.convoix.R
 
 @Composable
 fun Settings(navController: NavController, changeTheme:()->Unit, isDark: Boolean) {
+    Image(
+        painter = painterResource(id = R.drawable.blurry_gradient_haikei),
+        contentDescription = "",
+        modifier = Modifier.fillMaxSize(),
+        contentScale = ContentScale.Crop
+    )
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -42,9 +50,8 @@ fun Settings(navController: NavController, changeTheme:()->Unit, isDark: Boolean
         )
         Row(modifier = Modifier
             .padding(vertical = 6.dp, horizontal = 16.dp)
-            .shadow(5.dp, RoundedCornerShape(12.dp))
             .background(
-                if (isDark) Color.DarkGray else Color.LightGray,
+                if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.2f),
                 RoundedCornerShape(12.dp)
             ),
             verticalAlignment = Alignment.CenterVertically
@@ -107,10 +114,9 @@ fun SettingOption(
 ) {
     Row(modifier = Modifier
         .padding(vertical = 6.dp, horizontal = 16.dp)
-        .shadow(5.dp, RoundedCornerShape(12.dp))
         .clickable { onClick() }
         .background(
-            if (isDark) Color.DarkGray else Color.LightGray,
+            if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.2f),
             RoundedCornerShape(12.dp)
         ),
         verticalAlignment = Alignment.CenterVertically

@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalToolkitApi::class)
+
 package com.example.convoix.screens
 
 import androidx.activity.compose.BackHandler
@@ -6,16 +8,18 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,7 +28,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddComment
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Close
@@ -52,22 +55,36 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.convoix.AppState
 import com.example.convoix.ChatData
 import com.example.convoix.ChatUserData
 import com.example.convoix.ChatViewModel
-import com.example.convoix.CustomDialogBox
-import com.example.convoix.DeleteDialog
+import com.example.convoix.Dialogs.CustomDialogBox
+import com.example.convoix.Dialogs.DeleteDialog
 import com.example.convoix.R
+import com.primex.core.ExperimentalToolkitApi
+import com.primex.core.blur.legacyBackgroundBlur
+import com.primex.core.noise
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -120,6 +137,12 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
             }
         }
     ){it->
+        Image(
+            painter = painterResource(id = R.drawable.blurry_gradient_haikei),
+            contentDescription = "",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
         AnimatedVisibility(showDialog) {
             DeleteDialog(
                 hideDialog = { showDialog = !showDialog
@@ -140,7 +163,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                 )
         }
         Column(modifier = Modifier
-            .padding(top = 36.dp)) { //.background(colorScheme.primaryContainer)
+            .padding(top = 36.dp)) {//.background(colorScheme.primaryContainer)
             Box {
                 this@Column.AnimatedVisibility(
                     isSelected,
@@ -189,8 +212,8 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                             placeholder = { Text(text = "Search") },
                             shape = CircleShape,
                             colors = TextFieldDefaults.colors(
-                                unfocusedContainerColor = Color.Transparent.copy(alpha = 0.4f),
-                                focusedContainerColor = Color.Transparent.copy(alpha = 0.4f),
+                                unfocusedContainerColor = Color.Transparent.copy(alpha = 0.2f),
+                                focusedContainerColor = Color.Transparent.copy(alpha = 0.2f),
                                 focusedIndicatorColor = Color.Gray,
                                 unfocusedIndicatorColor = Color.DarkGray,
                                 unfocusedLeadingIconColor = Color.White,
@@ -202,7 +225,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                                 focusedTextColor = Color.White,
                                 unfocusedTextColor = Color.White
                             ),
-                            leadingIcon = {Icon(imageVector = Icons.Rounded.Search, contentDescription = null)},
+                            leadingIcon = { Icon(imageVector = Icons.Rounded.Search, contentDescription = null)},
                             trailingIcon = {
                                 if(!searchText.isBlank())
                                     IconButton(onClick = { searchText = ""}) {
@@ -225,15 +248,22 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                             style = MaterialTheme.typography.headlineMedium
                         )
                         Spacer(modifier = Modifier.weight(1f))
-                        IconButton(onClick = { showSearch = true }) {
+                        IconButton(modifier = Modifier
+                            .background(colorScheme.background.copy(alpha = 0.2f), CircleShape)
+                            .border(0.05.dp, Color.DarkGray, CircleShape),
+                                onClick = { showSearch = true }) {
                             Icon(
-                                modifier = Modifier.scale(1.3f),
-                                imageVector = Icons.Filled.Search,
+                                modifier = Modifier.scale(0.7f),
+                                painter = painterResource(id = R.drawable._666693_search_icon),
                                 contentDescription = null
                             )
                         }
+                        Spacer(modifier = Modifier.width(10.dp))
                         Column {
-                            IconButton(onClick = { expanded=true }) {
+                            IconButton(modifier = Modifier
+                                .background(colorScheme.background.copy(alpha = 0.2f), CircleShape)
+                                .border(0.05.dp, Color.DarkGray, CircleShape),
+                                onClick = { expanded=true }) {
                                 Icon(
                                     modifier = Modifier.scale(1.3f),
                                     imageVector = Icons.Filled.MoreVert,
@@ -274,7 +304,12 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
 
             LazyColumn(modifier= Modifier
                 .padding(top = padding)
-                .background(colorScheme.background, RoundedCornerShape(30.dp, 30.dp))){
+                .fillMaxHeight()
+                .background(
+                    colorScheme.background.copy(alpha = 0.2f),
+                    RoundedCornerShape(30.dp, 30.dp)
+                )
+                .border(0.05.dp, Color.DarkGray, RoundedCornerShape(30.dp, 30.dp))){
                 items(filteredChats){
                         val chatUser = if(it.user1?.userId!=state.userData?.userId) { it.user1 } else it.user2
                         ChatItem(selectedItems[chats.indexOf(it)], chatUser!!, showSingleChat = { user, id-> showSingleChat(user, id)}, it, showRow = { id->
@@ -301,19 +336,66 @@ fun ChatItem(isSelected: Boolean?, userData: ChatUserData, showSingleChat: (Chat
             .combinedClickable(
                 onClick = { showSingleChat(userData, chat.chatId) },
                 onLongClick = { showRow(chat.chatId) })
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AsyncImage(
-            model = userData.ppurl,
-            placeholder = painterResource(id = R.drawable.person_placeholder_4),
-            error = painterResource(id = R.drawable.person_placeholder_4),
-            contentDescription = "Profile picture",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .clip(CircleShape)
-                .size(60.dp)
-        )
+        if(!userData.status){
+            AsyncImage(
+                model = userData.ppurl,
+                placeholder = painterResource(id = R.drawable.person_placeholder_4),
+                error = painterResource(id = R.drawable.person_placeholder_4),
+                contentDescription = "Profile picture",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(70.dp)
+                    .clip(CircleShape)
+            )
+        }
+        else{
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current).data(userData.ppurl).build(),
+                placeholder = painterResource(id = R.drawable.person_placeholder_4),
+                error = painterResource(id = R.drawable.person_placeholder_4),
+                contentDescription = "Profile picture",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(70.dp)
+                    .graphicsLayer {
+                        compositingStrategy = CompositingStrategy.Offscreen
+                    }
+                    .drawWithCache {
+                        val path = Path()
+                        path.addOval(
+                            Rect(
+                                topLeft = Offset.Zero,
+                                bottomRight = Offset(size.width, size.height)
+                            )
+                        )
+                        onDrawWithContent {
+                            clipPath(path) {
+                                this@onDrawWithContent.drawContent()
+                            }
+                            val dotSize = size.width / 8f
+                            drawCircle(
+                                Color.Black,
+                                radius = dotSize,
+                                center = Offset(
+                                    x = size.width - dotSize,
+                                    y = size.height - dotSize
+                                ),
+                                blendMode = BlendMode.Clear
+                            )
+                            drawCircle(
+                                Color(0xFF60BB47), radius = dotSize * 0.8f,
+                                center = Offset(
+                                    x = size.width - dotSize,
+                                    y = size.height - dotSize
+                                )
+                            )
+                        }
+                    }
+            )
+        }
         Spacer(modifier = Modifier.width(16.dp))
         Column(
             modifier = Modifier.weight(1f),
@@ -331,12 +413,12 @@ fun ChatItem(isSelected: Boolean?, userData: ChatUserData, showSingleChat: (Chat
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         color = Color.Gray,
-                        style = MaterialTheme.typography.titleMedium
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Light)
                     )
                     Text(
                         text = if(chat.last?.time.toString()!="null") formatter.format(chat.last?.time?.toDate()!!) else "",
                         color = Color.Gray,
-                        style = MaterialTheme.typography.titleSmall
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Light)
                     )
                 }
             }
