@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.Filter
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
@@ -295,6 +296,24 @@ class ChatViewModel: ViewModel() {
                 }
             }
         firestore.collection("chats").document(chatId).update("last", Message(time = null))
+    }
+    fun blockUser(userId: String){
+        usersCollection.document(state.value.userData?.userId.toString()).update("blockedUsers", FieldValue.arrayUnion(userId))
+    }
+    fun unblockUser(userId: String){
+        usersCollection.document(state.value.userData?.userId.toString()).update("blockedUsers", FieldValue.arrayRemove(userId))
+    }
+    fun isBlocked(userId: String, callback: (Boolean) -> Unit) {
+        usersCollection.document(userId).addSnapshotListener { value, error ->
+            if (value != null) {
+                val isBlocked = value.toObject(UserData::class.java)?.blockedUsers
+                    ?.contains(state.value.userData?.userId.toString()) ?: false
+                callback(isBlocked)
+            }
+        }
+    }
+    fun isBLockedByMe(userId: String): Boolean {
+        return state.value.userData?.blockedUsers?.contains(userId)!!
     }
     fun getFCMToken(userId: String){
         FirebaseMessaging.getInstance().token.addOnCompleteListener {

@@ -50,6 +50,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -74,6 +75,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -236,11 +238,12 @@ fun Chat(navController: NavController,
                                                 DropdownMenuItem(
                                                     text = {
                                                         Text(
-                                                            text = "Block user",
+                                                            text = if(viewModel.isBLockedByMe(userData.userId)) "Unblock user" else "Block user",
                                                             style = MaterialTheme.typography.bodyLarge
                                                         )
                                                     },
-                                                    onClick = {  }
+                                                    onClick = { if(viewModel.isBLockedByMe(userData.userId)) viewModel.unblockUser(userData.userId) else viewModel.blockUser(userData.userId)
+                                                        expanded=false}
                                                 )
                                                 DropdownMenuItem(
                                                     text = {
@@ -363,51 +366,75 @@ fun Chat(navController: NavController,
             if(isLoading){
                 Upload(content = reply, state = state, bitmap)
             }
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .background(MaterialTheme.colorScheme.onPrimary, CircleShape)) {
-                TextField(modifier = Modifier.weight(1f), placeholder = { Text(text = "Message")},
-                    value = reply,
-                    onValueChange = { reply=it },
-                    //trailingIcon = {
-                    //   IconButton(onClick = { launcher.launch("image/*") }) {
-                      //     Icon(
-                    //            imageVector = Icons.Filled.InsertPhoto,
-                     //           contentDescription = null
-                     //       )
-                    //    }
-                  //  },
-                    colors = TextFieldDefaults.colors(
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    ))
-                AnimatedVisibility(reply.isNotEmpty() || imgUri!=null) {
-                    val scope = rememberCoroutineScope()
-                    IconButton(onClick = {
-                        if (imgUri == null) {
-                            viewModel.sendReply(msg = reply, chatId = chatId, imgUrl = "")
-                            reply = ""
-                        } else {
-                            isLoading = true
-                            viewModel.UploadImage(compressImage()) { imageUrl ->
-                                viewModel.sendReply(chatId = chatId, msg = reply, imgUrl = imageUrl)
-                                isLoading = false
+            var isBlocked by remember { mutableStateOf(false) }
+
+            viewModel.isBlocked(userData.userId) {
+                isBlocked = it
+            }
+
+            if (isBlocked) {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .background(MaterialTheme.colorScheme.onPrimary, CircleShape)) {
+                    Text(modifier = Modifier.weight(1f).padding(16.dp),
+                        text = "You are Blocked by the user!!",
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.titleMedium
+                        )
+                }
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .background(MaterialTheme.colorScheme.onPrimary, CircleShape)) {
+                    TextField(modifier = Modifier.weight(1f), placeholder = { Text(text = "Message")},
+                        value = reply,
+                        onValueChange = { reply=it },
+                        //trailingIcon = {
+                        //   IconButton(onClick = { launcher.launch("image/*") }) {
+                        //     Icon(
+                        //            imageVector = Icons.Filled.InsertPhoto,
+                        //           contentDescription = null
+                        //       )
+                        //    }
+                        //  },
+                        colors = TextFieldDefaults.colors(
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        ))
+                    AnimatedVisibility(reply.isNotEmpty() || imgUri!=null) {
+                        val scope = rememberCoroutineScope()
+                        IconButton(onClick = {
+                            if (imgUri == null) {
+                                viewModel.sendReply(msg = reply, chatId = chatId, imgUrl = "")
                                 reply = ""
+                            } else {
+                                isLoading = true
+                                viewModel.UploadImage(compressImage()) { imageUrl ->
+                                    viewModel.sendReply(chatId = chatId, msg = reply, imgUrl = imageUrl)
+                                    isLoading = false
+                                    reply = ""
+                                }
+                                imgUri = null
                             }
-                            imgUri = null
+                        }) {
+                            Icon(imageVector = Icons.Filled.Send, contentDescription = null)
                         }
-                    }) {
-                        Icon(imageVector = Icons.Filled.Send, contentDescription = null)
                     }
                 }
             }
         }
+
+
+        }
     }
-}
+
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

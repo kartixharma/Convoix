@@ -16,7 +16,7 @@ data class UserData (
     val ppurl: String = "",
     val email: String = "",
     val pref: Pref = Pref(),
-    val blockedUser: List<String> = listOf()
+    val blockedUsers: List<String> = emptyList()
 )
 
 data class Pref(
