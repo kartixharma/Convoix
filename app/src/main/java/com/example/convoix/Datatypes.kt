@@ -9,18 +9,17 @@ data class SignInResult (
 )
 
 data class UserData (
-    val userId: String = "",
-    val username: String? = "",
-    val bio: String = "",
-    val token: String = "",
-    val ppurl: String = "",
-    val email: String = "",
+    var userId: String = "",
+    var username: String? = "",
+    val bio: String? = "",
+    val token: String? = "",
+    val ppurl: String? = "",
+    var email: String = "",
     val pref: Pref = Pref(),
     val blockedUsers: List<String> = emptyList()
 )
 
 data class Pref(
-    val isDark: Boolean = false,
     val fontSize: Float = 16f,
     val back: Float = 1f,
     val themes: Int = 1
@@ -56,4 +55,14 @@ data class ChatUserData (
     val ppurl: String = "",
     val email: String = "",
     val status: Boolean = false
+)
+
+data class Story(
+    val id: String = "",
+    val userId: String = "",
+    val username: String? = "",
+    val imageUrl: String = "",
+    val time: Timestamp? = Timestamp.now(),
+    val ppurl: String = "",
+    val viewedBy: List<String> = emptyList()
 )

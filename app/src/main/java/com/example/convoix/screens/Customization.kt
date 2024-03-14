@@ -64,7 +64,7 @@ import com.example.convoix.Pref
 import com.example.convoix.R
 
 @Composable
-fun Customization(viewModel: ChatViewModel, state: AppState, isDark: Boolean) {
+fun Customization(viewModel: ChatViewModel, state: AppState) {
     val pref = state.userData?.pref
     var sliderPosition by remember { mutableFloatStateOf(pref?.fontSize.toString().toFloat()) }
     var bsliderPosition by remember { mutableFloatStateOf(pref?.back.toString().toFloat()) }
@@ -87,6 +87,11 @@ fun Customization(viewModel: ChatViewModel, state: AppState, isDark: Boolean) {
         Color(0xFF5E449B)
     ))
     val context = LocalContext.current
+    Image(modifier = Modifier.fillMaxSize(),
+        painter = painterResource(R.drawable.blurry_gradient_haikei),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+    )
     Column(modifier = Modifier
         .fillMaxSize()
         .padding(top = 50.dp)
@@ -108,22 +113,12 @@ fun Customization(viewModel: ChatViewModel, state: AppState, isDark: Boolean) {
             .background(MaterialTheme.colorScheme.background, RoundedCornerShape(16.dp))
             .height(200.dp),
             contentAlignment = Alignment.BottomCenter ) {
-            Image(
-                modifier = Modifier
-                    .alpha(bsliderPosition)
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(16.dp)),
-                contentScale = ContentScale.Crop,
-                painter = painterResource(R.drawable.hd_wallpaper_whatsapp_black_abstract_abstract_digital_abstraction_abstracts_background_digital_pattern_texture),
+            Image(modifier = Modifier.fillMaxSize()
+                .alpha(bsliderPosition)
+                .clip(RoundedCornerShape(16.dp)),
+                painter = painterResource(R.drawable.blurry_gradient_haikei),
                 contentDescription = null,
-                colorFilter = if (isDark) ColorFilter.tint(
-                    MaterialTheme.colorScheme.primaryContainer,
-                    blendMode = BlendMode.Softlight
-                )
-                else ColorFilter.tint(
-                    MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
-                    blendMode = BlendMode.Color
-                )
+                contentScale = ContentScale.Crop,
             )
 
             Column (modifier = Modifier.padding(bottom = 10.dp)){
@@ -133,9 +128,8 @@ fun Customization(viewModel: ChatViewModel, state: AppState, isDark: Boolean) {
         }
         Spacer(modifier = Modifier.height(20.dp))
         Row(modifier = Modifier
-            .shadow(5.dp, RoundedCornerShape(12.dp))
             .background(
-                if (isDark) Color.DarkGray else Color.LightGray,
+                Color.White.copy(alpha = 0.2f),
                 RoundedCornerShape(12.dp)
             ),
             verticalAlignment = Alignment.CenterVertically
@@ -166,9 +160,8 @@ fun Customization(viewModel: ChatViewModel, state: AppState, isDark: Boolean) {
         }
         Row(modifier = Modifier
             .padding(top = 20.dp)
-            .shadow(5.dp, RoundedCornerShape(12.dp))
             .background(
-                if (isDark) Color.DarkGray else Color.LightGray,
+                Color.White.copy(alpha = 0.2f),
                 RoundedCornerShape(12.dp)
             ),
             verticalAlignment = Alignment.CenterVertically
@@ -195,51 +188,9 @@ fun Customization(viewModel: ChatViewModel, state: AppState, isDark: Boolean) {
                 )
             }
         }
-        Row(modifier = Modifier
-            .padding(top = 20.dp)
-            .shadow(5.dp, RoundedCornerShape(12.dp))
-            .background(
-                if (isDark) Color.DarkGray else Color.LightGray,
-                RoundedCornerShape(12.dp)
-            ),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 15.dp)
-            ) {
-                Text(
-                    text = "Accent color",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 10.dp)
-                )
-                Row(modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 20.dp),horizontalArrangement = Arrangement.SpaceEvenly) {
-                    Box(modifier = Modifier
-                        .shadow(2.dp, CircleShape)
-                        .clickable { theme = 1 }
-                        .size(60.dp)
-                        .background(brush, CircleShape)
-                        .border(2.dp, if(theme==1) Color.LightGray else Color.Transparent, CircleShape)) {
-
-                    }
-                    Box(modifier = Modifier
-                        .shadow(2.dp, CircleShape)
-                        .clickable { theme=2 }
-                        .size(60.dp)
-                        .background(brush3, CircleShape)
-                        .border( 2.dp, if(theme==2) Color.LightGray else Color.Transparent, CircleShape)) {
-                    }
-                }
-
-            }
-        }
         Spacer(modifier = Modifier.weight(1f))
         Button(
-            onClick = { viewModel.updatePref(state.userData!!, Pref(fontSize = sliderPosition, isDark = isDark, back = bsliderPosition, themes = theme!!))
+            onClick = { viewModel.updatePref(state.userData!!, Pref(fontSize = sliderPosition, back = bsliderPosition, themes = theme!!))
                 Toast.makeText(context, "Preferences saved", Toast.LENGTH_SHORT).show()},
             modifier = Modifier
                 .padding(bottom = 50.dp)

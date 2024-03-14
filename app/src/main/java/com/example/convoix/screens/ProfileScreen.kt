@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieClipSpec
 import com.airbnb.lottie.compose.LottieCompositionSpec
@@ -103,6 +105,11 @@ fun ProfileScreen(
     var bitmap by remember {
         mutableStateOf<Bitmap?>(null)
     }
+    Image(modifier = Modifier.fillMaxSize(),
+        painter = painterResource(R.drawable.blurry_gradient_haikei),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+    )
     fun compressImage(): ByteArray {
         val outputStream = ByteArrayOutputStream()
         bitmap?.compress(Bitmap.CompressFormat.JPEG, 30, outputStream)
@@ -133,9 +140,9 @@ fun ProfileScreen(
             navController.popBackStack()
         }
     }
-    Box() {
-        Image(modifier = Modifier.fillMaxWidth(),painter = painterResource(id = if(isSystemInDarkTheme()) R.drawable.screen1 else R.drawable.screen),
-            contentDescription = null)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Image(painter = painterResource(id = if(isSystemInDarkTheme()) R.drawable.screen1 else R.drawable.screen),
+            contentDescription = null, contentScale = ContentScale.Crop)
         IconButton(modifier = Modifier.padding(top = 40.dp, start = 10.dp), onClick = { navController.popBackStack() }) {
             Icon(imageVector = Icons.Filled.ArrowBackIosNew, contentDescription = null)
         }
@@ -151,7 +158,11 @@ fun ProfileScreen(
             Column {
                 Box(contentAlignment = Alignment.Center) {
                     AsyncImage(
-                        model = user.ppurl,
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(user.ppurl)
+                            .crossfade(true)
+                            .allowHardware(false)
+                            .build(),
                         contentDescription = "Profile picture",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
@@ -210,7 +221,7 @@ fun ProfileScreen(
         if (!editBio) {
             Column( modifier = Modifier
                 .fillMaxWidth(0.6f)
-                .background(Color.DarkGray, RoundedCornerShape(12.dp))) {
+                .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(12.dp))) {
                 Text(text = if (user?.bio.toString() != "") "Bio:\n"+user?.bio.toString() else "No Bio",
                     modifier = Modifier
                         .width(250.dp)
@@ -311,7 +322,7 @@ fun ProfileScreen(
                 .fillMaxWidth()
                 .size(400.dp)
                 .padding(10.dp))
-            Button(onClick = { uploadImage(); imgUri = null;isLoading=true  }) {
+            ElevatedButton(onClick = { uploadImage(); imgUri = null;isLoading=true  }) {
                 Text(text = "Upload")
             }
         }

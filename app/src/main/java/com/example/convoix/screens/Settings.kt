@@ -48,56 +48,18 @@ fun Settings(navController: NavController, changeTheme:()->Unit, isDark: Boolean
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(vertical = 16.dp, horizontal = 16.dp)
         )
-        Row(modifier = Modifier
-            .padding(vertical = 6.dp, horizontal = 16.dp)
-            .background(
-                if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.2f),
-                RoundedCornerShape(12.dp)
-            ),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(modifier = Modifier
-                .padding(10.dp)
-                .size(35.dp),
-                painter = painterResource(id = R.drawable.themes), contentDescription = null)
-            Column {
-                Text(
-                    text = if(isDark) "Dark Theme" else "Light Theme",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 4.dp, top = 10.dp)
-                )
-                Text(
-                    text = "Manage Themes",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if(isDark) Color.LightGray else Color.DarkGray,
-                    modifier = Modifier.padding(bottom = 10.dp)
-                )
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            Switch (modifier = Modifier.padding(end = 10.dp),
-                checked = isDark,
-                onCheckedChange = { changeTheme()},
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.primary,
-                    checkedTrackColor = MaterialTheme.colorScheme.inversePrimary,
-                    uncheckedThumbColor = MaterialTheme.colorScheme.secondary,
-                    uncheckedTrackColor = MaterialTheme.colorScheme.secondaryContainer,
-                )
-            )
-        }
         SettingOption(
             isDark,
             title = "Customization",
             description = "Customize your chat screen",
-            onClick = {}, // navController.navigate("cus")
+            onClick = { navController.navigate("cus")},
             painter = painterResource(R.drawable.equalizer)
         )
         SettingOption(
             isDark,
             title = "Blocked Users",
             description = "View and manage blocked users",
-            onClick = {  },
+            onClick = { navController.navigate("blck") },
             painter = painterResource(id = R.drawable.block_user_6380092)
         )
         Spacer(modifier = Modifier.weight(1f))
@@ -116,7 +78,7 @@ fun SettingOption(
         .padding(vertical = 6.dp, horizontal = 16.dp)
         .clickable { onClick() }
         .background(
-            if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.2f),
+          Color.White.copy(alpha = 0.2f),
             RoundedCornerShape(12.dp)
         ),
         verticalAlignment = Alignment.CenterVertically

@@ -1,6 +1,5 @@
 package com.example.convoix
 
-import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -23,15 +22,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
 import com.example.convoix.screens.Chat
 import com.example.convoix.screens.ChatScreen
 import com.example.convoix.screens.Customization
@@ -41,17 +35,17 @@ import com.example.convoix.screens.Settings
 import com.example.convoix.screens.SignInScreen1
 import com.example.convoix.ui.theme.ConvoixTheme
 import com.google.android.gms.auth.api.identity.Identity
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    private val viewModel: ChatViewModel by viewModels()
     private val googleAuthUiClient by lazy {
         GoogleAuthUiClient(
+            viewModel = viewModel,
             context = applicationContext,
             oneTapClient = Identity.getSignInClient(applicationContext)
         )
     }
-    private val viewModel: ChatViewModel by viewModels()
     override fun onPause() {
         super.onPause()
         viewModel.updateStatus(false)
@@ -59,6 +53,11 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.updateStatus(true)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        viewModel.updateStatus(false)
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,6 +79,8 @@ class MainActivity : ComponentActivity() {
                             LaunchedEffect(key1 = Unit) {
                                 val userData = googleAuthUiClient.getSignedInUser()
                                 if (userData != null) {
+                                    viewModel.resetState()
+                                    viewModel.popStory(userData.userId)
                                     viewModel.getFCMToken(userData.userId)
                                     viewModel.getUserData(userData.userId)
                                     viewModel.showChats(userData.userId)
@@ -108,18 +109,18 @@ class MainActivity : ComponentActivity() {
                                 if (state.isSignedIn) {
                                     Toast.makeText(applicationContext, "Signed In Successfully", Toast.LENGTH_SHORT).show()
                                     val userData = googleAuthUiClient.getSignedInUser()
-                                    userData?.let {
+                                    userData?.run {
+                                        viewModel.resetState()
                                         viewModel.getFCMToken(userData.userId)
-                                        viewModel.addUserDataToFirestore(it)
+                                        viewModel.addUserDataToFirestore(userData)
                                         viewModel.getUserData(userData.userId)
                                         viewModel.showChats(userData.userId)
+                                        viewModel.popStory(userData.userId)
                                     }
-                                    viewModel.showAnim()
                                     viewModel.getFCMToken(userData?.userId.toString())
-                                    delay(1500)
                                     navController.navigate("chats")
-                                    viewModel.resetState()
                                     viewModel.getUserData(userData?.userId.toString())
+                                    viewModel.updateStatus(true)
                                 }
                             }
                             SignInScreen1(state = state,
@@ -132,7 +133,14 @@ class MainActivity : ComponentActivity() {
                                             ).build()
                                         )
                                     }
-                                }
+                                },
+                                custom = {email, pass ->
+                                    lifecycleScope.launch {
+                                        val result = googleAuthUiClient.signInWithEmailAndPassword(email, pass)
+                                        viewModel.onSignInResult(result)
+                                    }
+                                },
+                                googleAuthUiClient
                             )
                         }
                         composable("chats"){
@@ -161,11 +169,13 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("profile") {
                             ProfileScreen(viewModel = viewModel, state = state, onSignOut = {
+                                viewModel.updateStatus(false)
                                 lifecycleScope.launch {
                                     googleAuthUiClient.signOut()
                                     Toast.makeText(applicationContext, "Signed Out", Toast.LENGTH_SHORT).show()
                                     navController.navigate("signIn")
                                }
+                                viewModel.updateStatus(false)
                             },navController)
 
                         }
@@ -185,7 +195,17 @@ class MainActivity : ComponentActivity() {
                             targetOffsetX = { fullWidth -> fullWidth },
                             animationSpec = tween(200)
                         )}){
-                            Customization(viewModel, state,  isDark = isDark)
+                            Customization(viewModel, state)
+                        }
+                        composable("blck",enterTransition = { slideInHorizontally(
+                            initialOffsetX = { fullWidth -> fullWidth },
+                            animationSpec = tween(200)
+                        )}, exitTransition = { slideOutHorizontally(
+                            targetOffsetX = { fullWidth -> fullWidth },
+                            animationSpec = tween(200)
+                        )}){
+                            viewModel.getBlockedUsers(state.userData?.blockedUsers!!)
+                            BlockedUsers(viewModel, state)
                         }
                     }
                 }

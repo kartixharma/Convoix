@@ -1,9 +1,13 @@
 package com.example.convoix.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context.CLIPBOARD_SERVICE
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,6 +20,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,15 +33,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.InsertPhoto
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.CopyAll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,6 +78,8 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -74,6 +88,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpOffset
@@ -97,6 +112,7 @@ import com.example.convoix.Message
 import com.example.convoix.Dialogs.MsgDeleteDialog
 import com.example.convoix.R
 import com.example.convoix.View
+import com.example.convoix.ui.theme.md_theme_dark_background
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -110,6 +126,12 @@ fun Chat(navController: NavController,
          chatId:String, state: AppState,
          onBack:()->Unit
 ) {
+    var editMsgId by remember {
+        mutableStateOf("")
+    }
+    var editMsgContent by remember {
+        mutableStateOf("")
+    }
     var isLoading by remember {
         mutableStateOf(false)
     }
@@ -154,11 +176,12 @@ fun Chat(navController: NavController,
         viewModel.popMessage(state.chatId)
     }
     BackHandler {
-        if(selectionMode || showDialog || clearChatDialog){
+        if(selectionMode || showDialog || clearChatDialog || editMsgId.isNotBlank()){
             showDialog = false
             clearChatDialog = false
             selectionMode = false
             selectedItem.clear()
+            editMsgId=""
         }
         else{
             navController.popBackStack()
@@ -268,10 +291,11 @@ fun Chat(navController: NavController,
                             ){
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    horizontalArrangement = Arrangement.Center,
                                     modifier = Modifier.fillMaxWidth(0.95f)
                                 ) {
                                     Text(text = selectedItem.size.toString(), modifier = Modifier.padding(start = 20.dp))
+                                    Spacer(modifier = Modifier.weight(1f))
                                     IconButton(onClick = {
                                         showDialog = true
                                     }) {
@@ -288,10 +312,14 @@ fun Chat(navController: NavController,
             )
         }
     ) {it->
-        Image(modifier = Modifier.fillMaxSize(),
+        val focusRequester = FocusRequester()
+        val keyboardController = LocalSoftwareKeyboardController.current
+        Image(modifier = Modifier.fillMaxSize()
+            .alpha(alpha = state.userData?.pref?.back.toString().toFloat()),
             painter = painterResource(R.drawable.blurry_gradient_haikei),
             contentDescription = null,
-            contentScale = ContentScale.Crop)
+            contentScale = ContentScale.Crop,
+            )
         AnimatedVisibility(showDialog) {
             MsgDeleteDialog(selectedItem.size, hideDialog = { showDialog = false }, deleteMsg = {viewModel.deleteMsg(selectedItem, chatId)
                 selectedItem.clear()
@@ -339,16 +367,49 @@ fun Chat(navController: NavController,
                     val nextMessage = if (index < messages.size - 1) messages[index + 1] else null
                     MessageItem(
                         message = message,
-                        state, viewImage = {imageUrl = it},
-                        reaction = {viewModel.Reaction(it, chatId, message.msgId)},
+                        state, viewImage = { imageUrl = it },
+                        reaction = { viewModel.Reaction(it, chatId, message.msgId) },
                         selectionMode = { selectionMode = true
-                                        selectedItem.add(it)},
+                                        selectedItem.add(it) },
                         mode = selectionMode,
                         Selected = {if(selectedItem.contains(message.msgId))  {selectedItem.remove(it); if (selectedItem.size==0) selectionMode = false} else selectedItem.add(it) },
                         isSelected = selectedItem.contains(message.msgId),
                         prevId = prevMessage?.senderId.toString(),
-                        nextId = nextMessage?.senderId.toString()
+                        nextId = nextMessage?.senderId.toString(),
+                        editMessage = { id, content ->
+                            editMsgId=id
+                            editMsgContent=content
+                            focusRequester.requestFocus()
+                            keyboardController?.show()
+                        }
                         )
+                }
+            }
+            AnimatedVisibility(editMsgId.length>0) {
+                Column(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .background(Color.LightGray.copy(alpha = 0.2f), RoundedCornerShape(16.dp)),) {
+                    Row( modifier = Modifier.padding(start = 8.dp, top = 8.dp, end = 8.dp)) {
+                        Icon(imageVector = Icons.Filled.Edit, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "Edit message",)
+                        Spacer(modifier = Modifier.weight(1f))
+                        Icon(modifier = Modifier.clickable {
+                            editMsgId=""
+                        },
+                            imageVector = Icons.Filled.Close, contentDescription = null)
+
+                    }
+
+                    Text(text = editMsgContent, color = Color.LightGray,
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .background(
+                                MaterialTheme.colorScheme.onPrimary,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(8.dp))
                 }
             }
             imgUri?.let {
@@ -378,7 +439,9 @@ fun Chat(navController: NavController,
                     modifier = Modifier
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                         .background(MaterialTheme.colorScheme.onPrimary, CircleShape)) {
-                    Text(modifier = Modifier.weight(1f).padding(16.dp),
+                    Text(modifier = Modifier
+                        .weight(1f)
+                        .padding(16.dp),
                         text = "You are Blocked by the user!!",
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.error,
@@ -389,40 +452,54 @@ fun Chat(navController: NavController,
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
+                        .focusRequester(focusRequester)
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                         .background(MaterialTheme.colorScheme.onPrimary, CircleShape)) {
                     TextField(modifier = Modifier.weight(1f), placeholder = { Text(text = "Message")},
                         value = reply,
                         onValueChange = { reply=it },
-                        //trailingIcon = {
-                        //   IconButton(onClick = { launcher.launch("image/*") }) {
-                        //     Icon(
-                        //            imageVector = Icons.Filled.InsertPhoto,
-                        //           contentDescription = null
-                        //       )
-                        //    }
-                        //  },
+                        trailingIcon = {
+                            if(editMsgId.length==0){
+                                IconButton(onClick = { launcher.launch("image/*") }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.AddPhotoAlternate,
+                                        contentDescription = null
+                                    )
+                                }
+                            }
+
+                          },
                         colors = TextFieldDefaults.colors(
                             unfocusedContainerColor = Color.Transparent,
                             focusedContainerColor = Color.Transparent,
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent
-                        ))
+                        ),
+                        )
                     AnimatedVisibility(reply.isNotEmpty() || imgUri!=null) {
-                        val scope = rememberCoroutineScope()
                         IconButton(onClick = {
-                            if (imgUri == null) {
-                                viewModel.sendReply(msg = reply, chatId = chatId, imgUrl = "")
-                                reply = ""
-                            } else {
-                                isLoading = true
-                                viewModel.UploadImage(compressImage()) { imageUrl ->
-                                    viewModel.sendReply(chatId = chatId, msg = reply, imgUrl = imageUrl)
-                                    isLoading = false
+                            if(editMsgId.length==0){
+                                if (imgUri == null) {
+                                    viewModel.sendReply(msg = reply, chatId = chatId, imgUrl = "")
                                     reply = ""
+                                } else {
+                                    isLoading = true
+                                    val reply1 = reply
+                                    reply=""
+                                    viewModel.UploadImage(compressImage()) { imageUrl ->
+                                        viewModel.sendReply(chatId = chatId, msg = reply1, imgUrl = imageUrl)
+                                        isLoading = false
+                                    }
+                                    imgUri = null
                                 }
-                                imgUri = null
                             }
+                            else{
+                                viewModel.editMessage(editMsgId, chatId, reply)
+                                reply=""
+                                editMsgId=""
+                                keyboardController?.hide()
+                            }
+
                         }) {
                             Icon(imageVector = Icons.Filled.Send, contentDescription = null)
                         }
@@ -430,10 +507,8 @@ fun Chat(navController: NavController,
                 }
             }
         }
-
-
-        }
     }
+}
 
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -447,8 +522,10 @@ fun MessageItem(message: Message,
                 Selected:(String)->Unit,
                 isSelected: Boolean,
                 prevId: String,
-                nextId: String
+                nextId: String,
+                editMessage: (String, String) -> Unit
 ) {
+    val context = LocalContext.current
     val brush = Brush.linearGradient(listOf(
         Color(0xFF238CDD),
         Color(0xFF1952C4)
@@ -506,12 +583,12 @@ fun MessageItem(message: Message,
     Box(
         modifier = Modifier
             .background(clkcolor)
-            //.combinedClickable(
-            //    onLongClick = {
-            //  if (!mode) selectionMode(message.msgId) else {
-            //      null
-            //  }
-            //  }, onClick = { if (mode) Selected(message.msgId)  else onClick=!onClick})
+            .combinedClickable(
+                onLongClick = {
+                    if (!mode) selectionMode(message.msgId) else {
+                        null
+                    }
+                }, onClick = { if (mode) Selected(message.msgId) else onClick = !onClick })
             .fillMaxWidth()
             .padding(
                 top = 3.dp,
@@ -524,10 +601,10 @@ fun MessageItem(message: Message,
         Column(verticalArrangement = Arrangement.Bottom) {
             Column(
                 modifier = Modifier
-                    .shadow(2.dp, RoundedCornerShape(16.dp))
+                    .shadow(2.dp, shape)
                     .widthIn(max = 270.dp)
                     .fillMaxHeight()
-                    .background(color, RoundedCornerShape(16.dp)), horizontalAlignment = Alignment.End
+                    .background(color, shape), horizontalAlignment = Alignment.End
             ) {
                 if(message.imgUrl!=""){
                     AsyncImage(
@@ -537,7 +614,7 @@ fun MessageItem(message: Message,
                         modifier = Modifier
                             .clickable { viewImage(message.imgUrl.toString()) }
                             .aspectRatio(16f / 9f)
-                            .padding(6.dp)
+                            .padding(6.dp, 6.dp, 6.dp)
                             .clip(
                                 RoundedCornerShape(10.dp)
                             )
@@ -559,7 +636,7 @@ fun MessageItem(message: Message,
                     color = Color.White,
                 )
             }
-            AnimatedVisibility(message.reaction.toString()!="") {
+            if(message.reaction.toString()!="") {
                 Text(text = message.reaction.toString(), modifier = Modifier
                     .graphicsLayer(
                         translationY = (-20).dp.value,
@@ -574,12 +651,15 @@ fun MessageItem(message: Message,
                     )
             }
         }
-        AnimatedVisibility(onClick && !isCurrentUser) {
-            MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = CircleShape)) {
+        AnimatedVisibility(onClick) {
+            MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(18.dp)), colorScheme = MaterialTheme.colorScheme.copy(background = Color(
+                0xFF274F6F
+            )
+            ) ) {
                 DropdownMenu( offset = DpOffset(50.dp, 30.dp),
                     expanded = onClick,
                     onDismissRequest = { onClick = false },
-                    modifier = Modifier
+                    modifier = Modifier.background(MaterialTheme.colorScheme.background)
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 10.dp)) {
                         listOf("😂", "👍", "❤️", "😭", "😮").forEach {
@@ -587,19 +667,30 @@ fun MessageItem(message: Message,
                                 text = it,
                                 style = MaterialTheme.typography.headlineMedium,
                                 modifier = Modifier.clickable { reaction(it)
-                                    onClick = false}
+                                    onClick = false
+                                }
                             )
                         }
                     }
-                    //DropdownMenuItem(
-                   //     text = { Text(text = "Copy", style = MaterialTheme.typography.bodyLarge) },
-                    //    onClick = { val clipboardManager = context.getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                    //        val clipData: ClipData = ClipData.newPlainText("text", message.content)
-                     //       clipboardManager.setPrimaryClip(clipData)
-                      //      Toast.makeText(context, "Message copied", Toast.LENGTH_SHORT).show()
-                      //      onClick = false
-                      //  }
-                    //)
+                    DropdownMenuItem(
+                        text = { Text(text = "Copy", style = MaterialTheme.typography.bodyLarge) },
+                        onClick = { val clipboardManager = context.getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                            val clipData: ClipData = ClipData.newPlainText("text", message.content)
+                            clipboardManager.setPrimaryClip(clipData)
+                            Toast.makeText(context, "Message copied", Toast.LENGTH_SHORT).show()
+                            onClick = false
+                        }
+                    )
+                    if(isCurrentUser){
+                        DropdownMenuItem(
+                            text = { Text(text = "Edit message", style = MaterialTheme.typography.bodyLarge) },
+                            onClick = {
+                                editMessage(message.msgId, message.content.toString())
+                                onClick = false
+                            }
+                        )
+                    }
+
                 }
             }
         }
