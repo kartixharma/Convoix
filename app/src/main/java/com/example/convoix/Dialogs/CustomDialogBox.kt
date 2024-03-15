@@ -44,7 +44,7 @@ fun CustomDialogBox(
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
             shape = RoundedCornerShape(15.dp),
             modifier = Modifier.fillMaxWidth(0.90f),
-            colors = CardDefaults.cardColors(MaterialTheme.colorScheme.onSecondary)
+            colors = CardDefaults.cardColors(MaterialTheme.colorScheme.onPrimary)
         ) {
             Column(
                 modifier = Modifier.padding(15.dp),

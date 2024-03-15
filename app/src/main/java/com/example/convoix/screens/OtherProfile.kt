@@ -52,7 +52,11 @@ fun OtherProfile(
             navController.popBackStack()
         }
     }
-
+    Image(modifier = Modifier.fillMaxSize(),
+        painter = painterResource(R.drawable.blurry_gradient_haikei),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+    )
     Box {
         Image(modifier = Modifier.fillMaxWidth(),painter = painterResource(id = if(isSystemInDarkTheme()) R.drawable.screen1 else R.drawable.screen),
             contentDescription = null)
@@ -102,7 +106,7 @@ fun OtherProfile(
         Spacer(modifier = Modifier.height(16.dp))
             Column( modifier = Modifier
                 .width(250.dp)
-                .background(Color.DarkGray, RoundedCornerShape(12.dp))) {
+                .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(12.dp))) {
                 Text(text = if (user.bio != "") "Bio:\n"+user.bio else "No Bio",
                     modifier = Modifier
                         .width(250.dp)

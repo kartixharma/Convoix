@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,9 +37,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Close
@@ -55,12 +59,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -84,12 +90,14 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -108,11 +116,15 @@ import com.example.convoix.AppState
 import com.example.convoix.ChatUserData
 import com.example.convoix.ChatViewModel
 import com.example.convoix.ClearChatDialog
+import com.example.convoix.Dialogs.ImageViewer
 import com.example.convoix.Message
 import com.example.convoix.Dialogs.MsgDeleteDialog
 import com.example.convoix.R
 import com.example.convoix.View
 import com.example.convoix.ui.theme.md_theme_dark_background
+import com.makeappssimple.abhimanyu.composeemojipicker.ComposeEmojiPickerBottomSheetUI
+import com.makeappssimple.abhimanyu.composeemojipicker.ComposeEmojiPickerEmojiUI
+import com.makeappssimple.abhimanyu.composeemojipicker.utils.capitalizeWords
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -159,10 +171,26 @@ fun Chat(navController: NavController,
     var clearChatDialog by remember {
         mutableStateOf(false)
     }
-    var imageUrl by remember {
+    var msg by remember {
+        mutableStateOf(Message())
+    }
+    val brush = Brush.linearGradient(listOf(
+        Color(0xFF238CDD),
+        Color(0xFF1952C4)
+    ))
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+    )
+
+    var isModalBottomSheetVisible by remember {
+        mutableStateOf(false)
+    }
+    var selectedEmoji by remember {
         mutableStateOf("")
     }
-
+    var searchText by remember {
+        mutableStateOf("")
+    }
     var expanded by remember { mutableStateOf(false) }
     LaunchedEffect(key1 = reply){
         if(reply.length>0) {
@@ -176,12 +204,13 @@ fun Chat(navController: NavController,
         viewModel.popMessage(state.chatId)
     }
     BackHandler {
-        if(selectionMode || showDialog || clearChatDialog || editMsgId.isNotBlank()){
+        if(selectionMode || showDialog || clearChatDialog || editMsgId.isNotBlank() || isModalBottomSheetVisible){
             showDialog = false
             clearChatDialog = false
             selectionMode = false
             selectedItem.clear()
             editMsgId=""
+            isModalBottomSheetVisible = false
         }
         else{
             navController.popBackStack()
@@ -242,11 +271,11 @@ fun Chat(navController: NavController,
                                         IconButton(onClick = { expanded = true }) {
                                             Icon(imageVector = Icons.Filled.MoreVert, contentDescription = null)
                                         }
-                                        MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(12.dp))) {
+                                        MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(12.dp)), colorScheme = MaterialTheme.colorScheme.copy(background = Color(0xFF294F86))) {
                                             DropdownMenu(
                                                 expanded = expanded,
                                                 onDismissRequest = { expanded = false },
-                                                modifier = Modifier
+                                                modifier = Modifier.background(MaterialTheme.colorScheme.background)
                                             ) {
                                                 DropdownMenuItem(
                                                     text = {
@@ -312,14 +341,66 @@ fun Chat(navController: NavController,
             )
         }
     ) {it->
+        if (isModalBottomSheetVisible) {
+            ModalBottomSheet(
+                sheetState = sheetState,
+                shape = RectangleShape,
+                tonalElevation = 0.dp,
+                onDismissRequest = {
+                    isModalBottomSheetVisible = false
+                    searchText = ""
+                },
+                dragHandle = null,
+                windowInsets = WindowInsets(0),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                ) {
+                    ComposeEmojiPickerBottomSheetUI(
+                        onEmojiClick = { emoji ->
+                            isModalBottomSheetVisible = false
+                            viewModel.Reaction(emoji.character, chatId, selectedEmoji)
+                        },
+                        onEmojiLongClick = { emoji ->
+                            Toast.makeText(
+                                context,
+                                emoji.unicodeName.capitalizeWords(),
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        },
+                        searchText = searchText,
+                        updateSearchText = { updatedSearchText ->
+                            searchText = updatedSearchText
+                        },
+                    )
+                }
+            }
+        }
         val focusRequester = FocusRequester()
         val keyboardController = LocalSoftwareKeyboardController.current
-        Image(modifier = Modifier.fillMaxSize()
-            .alpha(alpha = state.userData?.pref?.back.toString().toFloat()),
+        Image(modifier = Modifier
+            .fillMaxSize()
+            .alpha(
+                alpha = state.userData?.pref?.back
+                    .toString()
+                    .toFloat()
+            ),
             painter = painterResource(R.drawable.blurry_gradient_haikei),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             )
+        Image(modifier = Modifier
+            .fillMaxSize()
+            .alpha(
+                alpha = state.userData?.pref?.doodles
+                    .toString()
+                    .toFloat()
+            ),
+            painter = painterResource(R.drawable.social_media_doodle_seamless_pattern_vector_27700734),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+        )
         AnimatedVisibility(showDialog) {
             MsgDeleteDialog(selectedItem.size, hideDialog = { showDialog = false }, deleteMsg = {viewModel.deleteMsg(selectedItem, chatId)
                 selectedItem.clear()
@@ -330,8 +411,8 @@ fun Chat(navController: NavController,
         AnimatedVisibility(clearChatDialog) {
             ClearChatDialog(hideDialog = { clearChatDialog = false}, clearChat = { viewModel.clearChat(chatId); clearChatDialog=false })
         }
-        AnimatedVisibility(imageUrl!="") {
-            View(imageUrl = imageUrl, hideDialog = {imageUrl=""})
+        AnimatedVisibility(msg.imgUrl!="") {
+           ImageViewer(userData = userData, hideDialog = { msg=Message() }, message = msg)
         }
         fun compressImage(): ByteArray {
             val outputStream = ByteArrayOutputStream()
@@ -367,7 +448,7 @@ fun Chat(navController: NavController,
                     val nextMessage = if (index < messages.size - 1) messages[index + 1] else null
                     MessageItem(
                         message = message,
-                        state, viewImage = { imageUrl = it },
+                        state, viewImage = { msg = it },
                         reaction = { viewModel.Reaction(it, chatId, message.msgId) },
                         selectionMode = { selectionMode = true
                                         selectedItem.add(it) },
@@ -379,9 +460,14 @@ fun Chat(navController: NavController,
                         editMessage = { id, content ->
                             editMsgId=id
                             editMsgContent=content
+                            reply=content
                             focusRequester.requestFocus()
                             keyboardController?.show()
-                        }
+                        },
+                        reactionPicker = {
+                            selectedEmoji=message.msgId
+                            isModalBottomSheetVisible=true },
+                        removeReaction = { viewModel.removeReaction(chatId, message.msgId) }
                         )
                 }
             }
@@ -397,6 +483,7 @@ fun Chat(navController: NavController,
                         Spacer(modifier = Modifier.weight(1f))
                         Icon(modifier = Modifier.clickable {
                             editMsgId=""
+                            reply=""
                         },
                             imageVector = Icons.Filled.Close, contentDescription = null)
 
@@ -477,7 +564,10 @@ fun Chat(navController: NavController,
                         ),
                         )
                     AnimatedVisibility(reply.isNotEmpty() || imgUri!=null) {
-                        IconButton(onClick = {
+                        IconButton(modifier = Modifier
+                            .padding(end = 4.dp)
+                            .background(brush, CircleShape) ,
+                            onClick = {
                             if(editMsgId.length==0){
                                 if (imgUri == null) {
                                     viewModel.sendReply(msg = reply, chatId = chatId, imgUrl = "")
@@ -516,14 +606,16 @@ fun Chat(navController: NavController,
 fun MessageItem(message: Message,
                 state: AppState,
                 reaction:(String)->Unit,
-                viewImage:(String)->Unit,
+                viewImage:(Message)->Unit,
                 selectionMode:(String)->Unit,
                 mode: Boolean,
                 Selected:(String)->Unit,
                 isSelected: Boolean,
                 prevId: String,
                 nextId: String,
-                editMessage: (String, String) -> Unit
+                editMessage: (String, String) -> Unit,
+                reactionPicker: () -> Unit,
+                removeReaction: () -> Unit
 ) {
     val context = LocalContext.current
     val brush = Brush.linearGradient(listOf(
@@ -579,6 +671,9 @@ fun MessageItem(message: Message,
     var onClick by remember {
         mutableStateOf(false)
     }
+    var showReactions by remember {
+        mutableStateOf(false)
+    }
     val clkcolor = if(isSelected) MaterialTheme.colorScheme.onPrimary else Color.Transparent
     Box(
         modifier = Modifier
@@ -592,7 +687,7 @@ fun MessageItem(message: Message,
             .fillMaxWidth()
             .padding(
                 top = 3.dp,
-                bottom = if (message.reaction.toString() != "") 0.dp else 3.dp,
+                bottom = 0.dp,
                 start = 10.dp,
                 end = 10.dp
             ),
@@ -612,7 +707,7 @@ fun MessageItem(message: Message,
                         contentDescription = "Profile picture",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
-                            .clickable { viewImage(message.imgUrl.toString()) }
+                            .clickable { viewImage(message) }
                             .aspectRatio(16f / 9f)
                             .padding(6.dp, 6.dp, 6.dp)
                             .clip(
@@ -631,29 +726,78 @@ fun MessageItem(message: Message,
                 }
                 Text(
                     text = formatter.format(message.time?.toDate()!!),
-                    modifier = Modifier.padding(end = 8.dp, bottom = if(message.reaction.toString()!="") 10.dp else 5.dp, start = 8.dp, top = 2.dp),
+                    modifier = Modifier.padding(end = 8.dp, bottom = if(message.reaction.isNotEmpty()) 10.dp else 5.dp, start = 8.dp, top = 2.dp),
                     style = MaterialTheme.typography.labelSmall,
                     color = Color.White,
                 )
             }
-            if(message.reaction.toString()!="") {
-                Text(text = message.reaction.toString(), modifier = Modifier
-                    .graphicsLayer(
-                        translationY = (-20).dp.value,
-                        clip = false
-                    )
-                    .background(color, CircleShape)
-                    .border(
-                        BorderStroke(1.5.dp, MaterialTheme.colorScheme.background),
-                        shape = CircleShape
-                    )
-                    .padding(4.dp)
-                    )
+            if(message.reaction.isNotEmpty()) {
+                LazyRow(
+                    modifier = Modifier
+                        .clickable {
+                            showReactions = true
+                        }
+                        .graphicsLayer(
+                            translationY = (-20).dp.value,
+                            clip = false
+                        )
+                        .background(color, CircleShape)
+                        .border(
+                            BorderStroke(1.5.dp, MaterialTheme.colorScheme.background),
+                            shape = CircleShape
+                        )
+                        .padding(4.dp)
+                ) {
+                    items(message.reaction){
+                        Text(text = it.reaction,  modifier = Modifier.padding(horizontal = 2.dp))
+                    }
+                }
+            }
+        }
+        AnimatedVisibility(showReactions) {
+            MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(18.dp)), colorScheme = MaterialTheme.colorScheme.copy(background = Color(
+                0xFF274F6F))) {
+                DropdownMenu( offset = DpOffset(50.dp, 30.dp),
+                    expanded = showReactions,
+                    onDismissRequest = { showReactions = false },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.background)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier
+                            .padding(horizontal = 10.dp)
+                            .width(200.dp)) {
+                        message.reaction.forEach {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                AsyncImage(
+                                    model = it.ppurl,
+                                    contentDescription = "Profile picture",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .padding(end = 8.dp)
+                                        .clip(CircleShape)
+                                        .size(30.dp)
+
+                                )
+                                Text(
+                                    text = it.username,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                                Text(modifier = Modifier.clickable {
+                                  if ( it.userId==state.userData?.userId ) removeReaction(); showReactions=false
+                                },
+                                    text = it.reaction,
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
         AnimatedVisibility(onClick) {
             MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(18.dp)), colorScheme = MaterialTheme.colorScheme.copy(background = Color(
-                0xFF274F6F
+                0xFF294F86
             )
             ) ) {
                 DropdownMenu( offset = DpOffset(50.dp, 30.dp),
@@ -671,6 +815,15 @@ fun MessageItem(message: Message,
                                 }
                             )
                         }
+                        Icon(
+                            modifier = Modifier
+                                .size(35.dp)
+                                .clickable {
+                                    reactionPicker()
+                                    onClick = false
+                                },
+                            imageVector = Icons.Filled.AddCircle,
+                            contentDescription = null)
                     }
                     DropdownMenuItem(
                         text = { Text(text = "Copy", style = MaterialTheme.typography.bodyLarge) },

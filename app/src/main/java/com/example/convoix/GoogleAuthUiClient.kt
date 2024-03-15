@@ -35,6 +35,7 @@ class GoogleAuthUiClient(
         return result?.pendingIntent?.intentSender
     }
     fun signInWithEmailAndPassword(email: String, password: String): SignInResult {
+        viewModel.resetState()
         val user = UserData()
         FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
@@ -61,6 +62,7 @@ class GoogleAuthUiClient(
         }
     }
     suspend fun signInWithIntent(intent: Intent): SignInResult {
+        viewModel.resetState()
         val cred = oneTapClient.getSignInCredentialFromIntent(intent)
         val googleIdToken = cred.googleIdToken
         val googleCred = GoogleAuthProvider.getCredential(googleIdToken,null)

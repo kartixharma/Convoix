@@ -22,7 +22,7 @@ data class UserData (
 data class Pref(
     val fontSize: Float = 16f,
     val back: Float = 1f,
-    val themes: Int = 1
+    val doodles: Float = 0.1f
 )
 
 
@@ -38,13 +38,18 @@ data class ChatData (
 data class Message(
     val msgId: String = "",
     val senderId: String? = "",
-    val reaction: String? = "",
+    val reaction: List<Reaction> = emptyList(),
     val imgUrl: String? = "",
     val content: String?="",
     val time: Timestamp? = Timestamp.now()
 )
 
-
+data class Reaction(
+    val ppurl: String = "",
+    val username: String = "",
+    val userId: String = "",
+    val reaction: String = ""
+)
 
 
 data class ChatUserData (

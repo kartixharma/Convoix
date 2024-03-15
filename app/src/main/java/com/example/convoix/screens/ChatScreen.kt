@@ -2,6 +2,7 @@
 
 package com.example.convoix.screens
 
+import android.Manifest
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -62,7 +64,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -99,6 +103,10 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.convoix.AppState
 import com.example.convoix.ChatData
 import com.example.convoix.ChatUserData
@@ -116,6 +124,14 @@ import java.util.Locale
 
 @Composable
 fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: AppState, showSingleChat: (ChatUserData, String) -> Unit){
+    val notLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()){
+
+    }
+    LaunchedEffect(key1 = true){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
     val chats = viewModel.chats
     var searchText by rememberSaveable { mutableStateOf("") }
     val filteredChats = if (searchText.isBlank()) {
@@ -130,6 +146,15 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
             }
 
         }
+    }
+    var selectionMode by remember {
+        mutableStateOf(false)
+    }
+    var isUploading by remember {
+        mutableStateOf(false)
+    }
+    val selectedItem = remember {
+        mutableStateListOf<String>()
     }
     var curStory by remember {
         mutableStateOf(Story())
@@ -174,24 +199,18 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
         mutableStateOf(false)
     }
     val padding by animateDpAsState(targetValue = if (showSearch) 15.dp else 10.dp)
-    var isSelected by remember {
-        mutableStateOf(false)
-    }
-    var dltChatId by remember {
-        mutableStateOf("")
-    }
     var showDialog by remember {
         mutableStateOf(false)
     }
     var expanded by remember { mutableStateOf(false) }
-    var selectedItems = mutableMapOf<Int, Boolean>()
+    val comp by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.upload))
     BackHandler {
         showDialog=false
         showStory=false
         searchText=""
         showSearch=false
-        isSelected=false
-        selectedItems.clear()
+        selectedItem.clear()
+        selectionMode=false
     }
     Scaffold(
         floatingActionButton = {
@@ -213,17 +232,19 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
         AnimatedVisibility(showDialog) {
             DeleteDialog(
                 hideDialog = { showDialog = !showDialog
-                    selectedItems.clear() },
-                deleteChat = { viewModel.deleteChat(dltChatId)
+                    selectedItem.clear() },
+                deleteChat = { viewModel.deleteChat(selectedItem)
                     showDialog = !showDialog
-                    selectedItems.clear() }
+                    selectedItem.clear() }
             )
         }
         AnimatedVisibility(showStory) {
             StoryDialog(
+                state,
                 story = curStory,
                 hideDialog = { showStory = !showStory
-                    selectedItems.clear() }
+                    selectedItem.clear() },
+                deleteStory = { viewModel.deleteStory(curStory.id) }
             )
         }
         AnimatedVisibility(state.showDialog){
@@ -240,28 +261,32 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
             .padding(top = 36.dp)) {//.background(colorScheme.primaryContainer)
             Box {
                 this@Column.AnimatedVisibility(
-                    isSelected,
+                    selectionMode,
                     enter = slideInVertically(),
                     exit = slideOutVertically()
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.Center,
                         modifier = Modifier.fillMaxWidth(0.95f)
                     ) {
-                        IconButton(modifier = Modifier.padding(9.dp),
+                        IconButton(modifier = Modifier.padding(5.dp),
                             onClick = {
-                                isSelected = false
-                                selectedItems.clear()
+                                selectionMode = false
+                                selectedItem.clear()
                             }) {
                             Icon(
                                 imageVector = Icons.Filled.ArrowBackIosNew,
                                 contentDescription = null
                             )
                         }
+                        Text(text = selectedItem.size.toString(),
+                            modifier = Modifier.padding(start = 20.dp),
+                            style = MaterialTheme.typography.titleLarge)
+                        Spacer(modifier = Modifier.weight(1f))
                         IconButton(onClick = {
                             showDialog = true
-                            isSelected = false
+                            selectionMode = false
                         }) {
                             Icon(imageVector = Icons.Filled.Delete, contentDescription = null)
                         }
@@ -310,7 +335,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                         )
                     }
                 }
-                if (!isSelected && !showSearch) {
+                if (!selectionMode && !showSearch) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center,
@@ -320,13 +345,12 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                             Text(
                                 text = "Hello",
                                 modifier = Modifier.padding(start = 16.dp),
-                                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 20.sp),
-                                fontWeight = FontWeight.Normal
+                                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 20.sp)
                             )
                             Text(
                                 text = state.userData?.username.toString(),
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                style = MaterialTheme.typography.headlineSmall,
+                                modifier = Modifier.padding(start = 16.dp),
+                                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 20.sp),
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -354,12 +378,13 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                                 )
                             }
                             MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(12.dp)), colorScheme = MaterialTheme.colorScheme.copy(background = Color(
-                                0xFF274F6F
-                            ))) {
+                                0xFF294F86
+                            )
+                            ) ) {
                                 DropdownMenu(
                                     expanded = expanded,
                                     onDismissRequest = { expanded = false },
-                                    modifier = Modifier
+                                    modifier = Modifier.background(MaterialTheme.colorScheme.background)
                                 ) {
                                     DropdownMenuItem(
                                         text = {
@@ -397,8 +422,10 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                         .size(400.dp)
                         .padding(10.dp))
                     Button(onClick = {
+                        isUploading = true
                         viewModel.UploadImage1(imgUri!!){
                             viewModel.uploadStory(it)
+                            isUploading = false
                         }
                         imgUri = null  }) {
                         Text(text = "Upload")
@@ -409,7 +436,34 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
             AnimatedVisibility(!showSearch){
                 LazyRow {
                     item {
-                        if(viewModel.myStory.userId.length>0){
+                        if(isUploading){
+                            Box(
+                                modifier = Modifier
+                                    .clickable {
+                                        curStory = viewModel.myStory
+                                        showStory = true
+                                    }
+                                    .padding(horizontal = 6.dp, vertical = 5.dp)
+                                    .size(90.dp)
+                                    .padding(7.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(state.userData?.ppurl)
+                                        .crossfade(true)
+                                        .allowHardware(false)
+                                        .build(),
+                                    placeholder = painterResource(id = R.drawable.person_placeholder_4),
+                                    error = painterResource(id = R.drawable.person_placeholder_4),
+                                    contentDescription = "Profile picture",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.clip(CircleShape)
+                                )
+                                LottieAnimation(composition = comp, iterations = LottieConstants.IterateForever)
+                            }
+                        }
+                        if(viewModel.myStory.userId.length>0 && !isUploading){
                             Box(
                                 modifier = Modifier
                                     .clickable {
@@ -433,14 +487,15 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier.clip(CircleShape)
                                     )
-                                    Icon( modifier = Modifier.size(30.dp)
+                                    Icon( modifier = Modifier
+                                        .size(30.dp)
                                         .clickable {
                                             launcher.launch("image/*")
                                         },
                                         imageVector = Icons.Filled.AddCircle, contentDescription = null)
                             }
                         }
-                        else{
+                        if(viewModel.myStory.userId.length==0 && !isUploading){
                             Box(modifier = Modifier
                                 .padding(vertical = 15.dp, horizontal = 10.dp)
                                 .size(70.dp)
@@ -474,7 +529,6 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                                 )
                             }
                         }
-
                     }
                     items(viewModel.stories){
                         Box(
@@ -487,8 +541,11 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                                 .padding(horizontal = 6.dp, vertical = 10.dp)
                                 .size(80.dp)
                                 .shadow(1.dp, CircleShape)
-                                .border(if(it.viewedBy.contains(state.userData?.userId)) 2.dp else 3.dp,
-                                    if(it.viewedBy.contains(state.userData?.userId)) border1 else story, CircleShape)
+                                .border(
+                                    if (it.viewedBy.contains(state.userData?.userId)) 2.dp else 3.dp,
+                                    if (it.viewedBy.contains(state.userData?.userId)) border1 else story,
+                                    CircleShape
+                                )
                                 .padding(7.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -505,10 +562,8 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                                 modifier = Modifier.clip(CircleShape)
                             )
                         }
-
                     }
                 }
-
             }
             LazyColumn(modifier= Modifier
                 .padding(top = padding)
@@ -528,11 +583,14 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                 }
                 items(filteredChats){
                         val chatUser = if(it.user1?.userId!=state.userData?.userId) { it.user1 } else it.user2
-                        ChatItem(selectedItems[chats.indexOf(it)], chatUser!!, showSingleChat = { user, id-> showSingleChat(user, id)}, it, showRow = { id->
-                            selectedItems[chats.indexOf(it)] = true
-                            dltChatId = id
-                            isSelected = true
-                        })
+                        ChatItem(state,
+                            chatUser!!, showSingleChat = { user, id-> showSingleChat(user, id)}, it,
+                            selectionMode = { selectionMode = true
+                                selectedItem.add(it) },
+                            mode = selectionMode,
+                            Selected = {if(selectedItem.contains(it))  {selectedItem.remove(it); if (selectedItem.size==0) selectionMode = false} else selectedItem.add(it) },
+                            isSelected = selectedItem.contains(it.chatId),
+                        )
                 }
             }
         }
@@ -540,18 +598,35 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
 }
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ChatItem(isSelected: Boolean?, userData: ChatUserData, showSingleChat: (ChatUserData, String) -> Unit, chat: ChatData, showRow:(String)->Unit) {
+fun ChatItem(state: AppState,
+             userData: ChatUserData,
+             showSingleChat: (ChatUserData, String) -> Unit,
+             chat: ChatData,
+             selectionMode:(String)->Unit,
+             mode: Boolean,
+             Selected:(String)->Unit,
+             isSelected: Boolean,
+) {
     val formatter = remember {
         SimpleDateFormat(("hh:mm a"), Locale.getDefault())
     }
-    val color = if(isSelected==null || isSelected==false) Color.Transparent else colorScheme.secondaryContainer
+    val color = if(!isSelected) Color.Transparent else colorScheme.secondaryContainer
     Row(
         modifier = Modifier
             .background(color)
             .fillMaxWidth()
             .combinedClickable(
-                onClick = { showSingleChat(userData, chat.chatId) },
-                onLongClick = { showRow(chat.chatId) })
+                onLongClick = {
+                    if (!mode) selectionMode(chat.chatId) else {
+                        null
+                    }
+                },
+                onClick = {
+                    if (mode) Selected(chat.chatId) else showSingleChat(
+                        userData,
+                        chat.chatId
+                    )
+                })
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -626,7 +701,7 @@ fun ChatItem(isSelected: Boolean?, userData: ChatUserData, showSingleChat: (Chat
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = userData.username.orEmpty(),
+                text = if(userData.userId==state.userData?.userId) userData.username.orEmpty() + " (You)" else userData.username.orEmpty(),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )

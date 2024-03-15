@@ -31,7 +31,7 @@ fun MsgDeleteDialog(number:Int, hideDialog: () ->Unit, deleteMsg:()->Unit){
             defaultElevation = 6.dp),
             shape = RoundedCornerShape(15.dp),
             modifier = Modifier.fillMaxWidth(0.7f),
-            colors = CardDefaults.cardColors(MaterialTheme.colorScheme.background)
+            colors = CardDefaults.cardColors(MaterialTheme.colorScheme.onPrimary)
         ) {
             Column( modifier = Modifier
                 .padding(15.dp),

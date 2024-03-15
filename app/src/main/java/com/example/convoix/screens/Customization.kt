@@ -53,6 +53,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -68,7 +69,7 @@ fun Customization(viewModel: ChatViewModel, state: AppState) {
     val pref = state.userData?.pref
     var sliderPosition by remember { mutableFloatStateOf(pref?.fontSize.toString().toFloat()) }
     var bsliderPosition by remember { mutableFloatStateOf(pref?.back.toString().toFloat()) }
-    var theme by remember { mutableStateOf(pref?.themes) }
+    var dsliderPosition by remember { mutableFloatStateOf(pref?.doodles.toString().toFloat()) }
     val size = sliderPosition.sp
     val brush = Brush.linearGradient(listOf(
         Color(0xFF238CDD),
@@ -77,14 +78,6 @@ fun Customization(viewModel: ChatViewModel, state: AppState) {
     val brush2 = Brush.linearGradient(listOf(
         Color(0xFF2A4783),
         Color(0xFF2F6086)
-    ))
-    val brush3 = Brush.linearGradient(listOf(
-        Color(0xFF9465FF),
-        Color(0xFF6723D1)
-    ))
-    val brush4 = Brush.linearGradient(listOf(
-        Color(0xFF54308D),
-        Color(0xFF5E449B)
     ))
     val context = LocalContext.current
     Image(modifier = Modifier.fillMaxSize(),
@@ -104,26 +97,36 @@ fun Customization(viewModel: ChatViewModel, state: AppState) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 16.dp,)
         )
-        Box(modifier = Modifier
+        Box(modifier = Modifier.shadow(5.dp)
             .border(
                 1.dp,
                 MaterialTheme.colorScheme.inversePrimary,
                 RoundedCornerShape(16.dp)
             )
             .background(MaterialTheme.colorScheme.background, RoundedCornerShape(16.dp))
-            .height(200.dp),
-            contentAlignment = Alignment.BottomCenter ) {
-            Image(modifier = Modifier.fillMaxSize()
+            .height(230.dp)) {
+            Image(modifier = Modifier
+                .fillMaxSize()
                 .alpha(bsliderPosition)
                 .clip(RoundedCornerShape(16.dp)),
                 painter = painterResource(R.drawable.blurry_gradient_haikei),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
             )
-
-            Column (modifier = Modifier.padding(bottom = 10.dp)){
-                MessageItem("This is a Sample Text", alignment = Alignment.CenterStart, if(theme==2) brush4 else brush2, size)
-                MessageItem("This is a sample Text 2", alignment = Alignment.CenterEnd, if(theme==2) brush3 else brush,size)
+            Image(modifier = Modifier
+                .fillMaxSize()
+                .alpha(
+                    dsliderPosition
+                )
+                .clip(RoundedCornerShape(16.dp)),
+                painter = painterResource(R.drawable.social_media_doodle_seamless_pattern_vector_27700734),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+            )
+            Text(text = "Preview", textAlign = TextAlign.Center, modifier = Modifier.fillMaxSize().padding(10.dp))
+            Column (modifier = Modifier.padding(bottom = 10.dp).fillMaxSize(), verticalArrangement = Arrangement.Bottom){
+                MessageItem("This is a Sample Text", alignment = Alignment.CenterStart, brush2, size)
+                MessageItem("This is a sample Text 2", alignment = Alignment.CenterEnd, brush,size)
             }
         }
         Spacer(modifier = Modifier.height(20.dp))
@@ -185,12 +188,44 @@ fun Customization(viewModel: ChatViewModel, state: AppState) {
                         activeTrackColor = MaterialTheme.colorScheme.secondary,
                         inactiveTrackColor = MaterialTheme.colorScheme.secondaryContainer
                     ),
+
+                )
+            }
+        }
+        Row(modifier = Modifier
+            .padding(top = 20.dp)
+            .background(
+                Color.White.copy(alpha = 0.2f),
+                RoundedCornerShape(12.dp)
+            ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 15.dp)
+            ) {
+                Text(
+                    text = "doodles",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 10.dp)
+                )
+                Slider(
+                    value = dsliderPosition,
+                    onValueChange = { dsliderPosition = it },
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.secondary,
+                        activeTrackColor = MaterialTheme.colorScheme.secondary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.secondaryContainer
+                    ),
+                    valueRange = 0f..0.5f
                 )
             }
         }
         Spacer(modifier = Modifier.weight(1f))
         Button(
-            onClick = { viewModel.updatePref(state.userData!!, Pref(fontSize = sliderPosition, back = bsliderPosition, themes = theme!!))
+            onClick = { viewModel.updatePref(state.userData!!, Pref(fontSize = sliderPosition, back = bsliderPosition, doodles = dsliderPosition))
                 Toast.makeText(context, "Preferences saved", Toast.LENGTH_SHORT).show()},
             modifier = Modifier
                 .padding(bottom = 50.dp)

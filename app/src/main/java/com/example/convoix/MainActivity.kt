@@ -26,6 +26,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.convoix.screens.BlockedUsers
 import com.example.convoix.screens.Chat
 import com.example.convoix.screens.ChatScreen
 import com.example.convoix.screens.Customization
@@ -35,6 +36,7 @@ import com.example.convoix.screens.Settings
 import com.example.convoix.screens.SignInScreen1
 import com.example.convoix.ui.theme.ConvoixTheme
 import com.google.android.gms.auth.api.identity.Identity
+import com.google.firebase.Firebase
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -79,7 +81,6 @@ class MainActivity : ComponentActivity() {
                             LaunchedEffect(key1 = Unit) {
                                 val userData = googleAuthUiClient.getSignedInUser()
                                 if (userData != null) {
-                                    viewModel.resetState()
                                     viewModel.popStory(userData.userId)
                                     viewModel.getFCMToken(userData.userId)
                                     viewModel.getUserData(userData.userId)
@@ -110,17 +111,15 @@ class MainActivity : ComponentActivity() {
                                     Toast.makeText(applicationContext, "Signed In Successfully", Toast.LENGTH_SHORT).show()
                                     val userData = googleAuthUiClient.getSignedInUser()
                                     userData?.run {
-                                        viewModel.resetState()
-                                        viewModel.getFCMToken(userData.userId)
+                                        viewModel.getFCMToken(userData.userId.toString())
                                         viewModel.addUserDataToFirestore(userData)
                                         viewModel.getUserData(userData.userId)
                                         viewModel.showChats(userData.userId)
                                         viewModel.popStory(userData.userId)
+                                        viewModel.getFCMToken(userData.userId)
+                                        navController.navigate("chats")
+                                        viewModel.updateStatus(true)
                                     }
-                                    viewModel.getFCMToken(userData?.userId.toString())
-                                    navController.navigate("chats")
-                                    viewModel.getUserData(userData?.userId.toString())
-                                    viewModel.updateStatus(true)
                                 }
                             }
                             SignInScreen1(state = state,
@@ -169,15 +168,12 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("profile") {
                             ProfileScreen(viewModel = viewModel, state = state, onSignOut = {
-                                viewModel.updateStatus(false)
                                 lifecycleScope.launch {
                                     googleAuthUiClient.signOut()
                                     Toast.makeText(applicationContext, "Signed Out", Toast.LENGTH_SHORT).show()
                                     navController.navigate("signIn")
-                               }
-                                viewModel.updateStatus(false)
-                            },navController)
-
+                                }
+                            }, navController)
                         }
                         composable("settings",enterTransition = { slideInHorizontally(
                             initialOffsetX = { fullWidth -> fullWidth },

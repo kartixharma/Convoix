@@ -64,6 +64,7 @@ import com.airbnb.lottie.compose.rememberLottieAnimatable
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.convoix.AppState
 import com.example.convoix.ChatViewModel
+import com.example.convoix.Dialogs.ProfileEditDialog
 import com.example.convoix.R
 import com.example.convoix.UserData
 import com.example.convoix.View
@@ -78,13 +79,10 @@ fun ProfileScreen(
     val comp by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.upload))
     val context = LocalContext.current
     val user = state.userData
-    var editName by remember {
+    var editProfile by remember {
         mutableStateOf(false)
     }
     var viewImage by remember {
-        mutableStateOf(false)
-    }
-    var editBio by remember {
         mutableStateOf(false)
     }
     var isLoading by remember {
@@ -131,20 +129,26 @@ fun ProfileScreen(
 
     }
     BackHandler {
-        if (editName || editBio || viewImage || imgUri!=null) {
-            editName = false
-            editBio = false
+        if (editProfile || viewImage || imgUri!=null) {
+            editProfile = false
             viewImage = false
             imgUri = null
         } else {
             navController.popBackStack()
         }
     }
-    Box(modifier = Modifier.fillMaxSize()) {
-        Image(painter = painterResource(id = if(isSystemInDarkTheme()) R.drawable.screen1 else R.drawable.screen),
-            contentDescription = null, contentScale = ContentScale.Crop)
-        IconButton(modifier = Modifier.padding(top = 40.dp, start = 10.dp), onClick = { navController.popBackStack() }) {
-            Icon(imageVector = Icons.Filled.ArrowBackIosNew, contentDescription = null)
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Image(modifier = Modifier.fillMaxSize(),
+            painter = painterResource(id = if(isSystemInDarkTheme()) R.drawable.screen1 else R.drawable.screen),
+            contentDescription = null)
+        Row(modifier = Modifier.padding(horizontal = 15.dp)) {
+            IconButton(modifier = Modifier.padding(top = 40.dp), onClick = { navController.popBackStack() }) {
+                Icon(imageVector = Icons.Filled.ArrowBackIosNew, contentDescription = null)
+        }
+            Spacer(modifier = Modifier.weight(1f))
+            IconButton(modifier = Modifier.padding(top = 40.dp), onClick = { editProfile = true}) {
+                Icon(imageVector = Icons.Filled.Edit, contentDescription = null)
+            }
         }
     }
 
@@ -174,7 +178,9 @@ fun ProfileScreen(
                             .border(3.dp, MaterialTheme.colorScheme.background, CircleShape)
                     )
                     if (isLoading){
-                        Column(modifier = Modifier.background(Color.DarkGray.copy(alpha = 0.7f), CircleShape).size(150.dp)) {
+                        Column(modifier = Modifier
+                            .background(Color.DarkGray.copy(alpha = 0.7f), CircleShape)
+                            .size(150.dp)) {
                         }
                         LottieAnimation(composition = comp, iterations = LottieConstants.IterateForever)
                     }
@@ -190,27 +196,14 @@ fun ProfileScreen(
             }
 
         }
-            if (!editName) {
                 Text(text = user?.username.toString(),
                     modifier = Modifier
-                        .offset(y = (-25).dp)
-                        .clickable { editName = true },
+                        .offset(y = (-25).dp),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White
                 )
-            }
-        AnimatedVisibility (editName,enter = slideInHorizontally(), exit = ExitTransition.None) {
-                OutlinedTextField(modifier = Modifier
-                    .offset(y = (-25).dp)
-                    .width(250.dp),
-                    value = name.toString(),
-                    onValueChange = { name = it },
-                    placeholder = { Text(text = "Name")},
-                    shape = RoundedCornerShape(12.dp),
-                    colors = TextFieldDefaults.colors()
-                )
-            }
+
         Spacer(modifier = Modifier.height(10.dp))
         Text(
             text = user?.email.toString(),
@@ -218,55 +211,20 @@ fun ProfileScreen(
             color = Color.Gray
         )
         Spacer(modifier = Modifier.height(16.dp))
-        if (!editBio) {
             Column( modifier = Modifier
                 .fillMaxWidth(0.6f)
                 .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(12.dp))) {
                 Text(text = if (user?.bio.toString() != "") "Bio:\n"+user?.bio.toString() else "No Bio",
                     modifier = Modifier
                         .width(250.dp)
-                        .clickable { editBio = true }
                         .padding(12.dp),
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodyLarge,
                     color = if (user?.bio.toString() != "") Color.White else Color.LightGray
                 )
             }
-            }
 
-        AnimatedVisibility (editBio, enter = slideInHorizontally(), exit = ExitTransition.None) {
-            OutlinedTextField(modifier = Modifier.width(250.dp),
-                value = bio.toString(),
-                onValueChange = { bio = it },
-                placeholder = { Text(text = "Add bio")},
-                shape = RoundedCornerShape(12.dp),
-                colors = TextFieldDefaults.colors()
-            )
-        }
         Spacer(modifier = Modifier.height(16.dp))
-        if (editName || editBio) {
-            Button(modifier = Modifier.height(50.dp), shape = CircleShape,
-                onClick = {
-                    viewModel.updateProfile(
-                        userData = UserData(
-                            email = user?.email.toString(),
-                            userId = user?.userId.toString(),
-                            username = name,
-                            bio = bio.toString(),
-                            ppurl = user?.ppurl.toString()
-                        )
-                    )
-                    editBio = false
-                    editName = false
-                },
-            ) {
-                Text(
-                    text = "Save",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
     }
     val brush = Brush.linearGradient(listOf(
         Color(0xFF238CDD),
@@ -297,7 +255,11 @@ fun ProfileScreen(
       //  }
         Spacer(modifier = Modifier.height(16.dp))
         Button(
-            onClick = { onSignOut() },
+            onClick = {
+                viewModel.updateStatus(false)
+                viewModel.removeL()
+                onSignOut()
+                      },
             modifier = Modifier
                 .background(brush, CircleShape)
                 .fillMaxWidth(0.7f)
@@ -330,6 +292,20 @@ fun ProfileScreen(
     }
     AnimatedVisibility(viewImage) {
         View(imageUrl = user?.ppurl.toString(), hideDialog = {viewImage=false})
+    }
+    AnimatedVisibility(visible = editProfile) {
+        ProfileEditDialog(hideDialog = { editProfile = false }, saveProfile = { name, bio ->
+            viewModel.updateProfile(
+                userData = UserData(
+                    email = user?.email.toString(),
+                    userId = user?.userId.toString(),
+                    username = name,
+                    bio = bio,
+                    ppurl = user?.ppurl.toString()
+                )
+            )
+            editProfile = false
+        }, user = user)
     }
 
 }

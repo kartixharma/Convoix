@@ -13,12 +13,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,19 +46,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import com.example.convoix.AppState
 import com.example.convoix.Story
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Composable
-fun StoryDialog(story: Story, hideDialog:()->Unit){
+fun StoryDialog(appState: AppState, story: Story, hideDialog:()->Unit, deleteStory:()->Unit ){
     val formatter = remember {
         SimpleDateFormat(("hh:mm a"), Locale.getDefault())
     }
     Column(modifier = Modifier
         .fillMaxSize()
-        .blur(15.dp)) {
-        Text(text = "")
+        .background(MaterialTheme.colorScheme.background)) {
     }
     Dialog(onDismissRequest = hideDialog,
         properties = DialogProperties(
@@ -106,6 +112,9 @@ fun StoryDialog(story: Story, hideDialog:()->Unit){
                     .padding(16.dp)
                     .fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { hideDialog() }) {
+                        Icon(imageVector = Icons.Filled.ArrowBackIosNew, contentDescription = null)
+                    }
                     AsyncImage(
                         model = story.ppurl,
                         contentDescription = "Profile picture",
@@ -116,8 +125,8 @@ fun StoryDialog(story: Story, hideDialog:()->Unit){
                     )
                     Column(modifier = Modifier.padding(start = 16.dp)){
                         Text(
-                            text = story.username.toString(),
-                            style = MaterialTheme.typography.titleLarge,
+                            text = if(story.userId==appState.userData?.userId) story.username.toString()+" (You)" else story.username.toString(),
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
@@ -126,11 +135,16 @@ fun StoryDialog(story: Story, hideDialog:()->Unit){
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Light)
                         )
                     }
+                    Spacer(modifier = Modifier.weight(1f))
+                    if(story.userId==appState.userData?.userId){
+                        IconButton(onClick = { deleteStory()
+                        hideDialog() }) {
+                            Icon(imageVector = Icons.Filled.Delete, contentDescription = null)
+                        }
+                    }
 
                 }
             }
-            
         }
-
     }
 }

@@ -29,6 +29,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONObject
 import java.io.IOException
+import java.time.LocalDateTime
 import java.util.Calendar
 
 
@@ -46,6 +47,9 @@ class ChatViewModel: ViewModel() {
     var stories by mutableStateOf<List<Story>>(emptyList())
     var myStory by mutableStateOf(Story())
     var list by mutableStateOf<List<UserData>>(emptyList())
+    var chatListener: ListenerRegistration? = null
+    var userDataListener: ListenerRegistration? = null
+    var storyListener: ListenerRegistration? = null
     fun onSignInResult(result: SignInResult){
         _state.update {
             it.copy(
@@ -87,7 +91,7 @@ class ChatViewModel: ViewModel() {
                     }
                     users.add(otherUserId)
                 }
-                storyCol
+                storyListener = storyCol
                     .whereIn("userId", users)
                     .addSnapshotListener { storySnapshot, storyError ->
                         if (storySnapshot != null) {
@@ -96,7 +100,6 @@ class ChatViewModel: ViewModel() {
                             }
                         }
                     }
-
             }
     }
         storyCol
@@ -138,7 +141,7 @@ class ChatViewModel: ViewModel() {
     }
 
     fun showChats(userId: String){
-        firestore.collection("chats").where(
+        chatListener = firestore.collection("chats").where(
             Filter.or(
                 Filter.equalTo("user1.userId", userId),
                 Filter.equalTo("user2.userId", userId)
@@ -198,7 +201,6 @@ class ChatViewModel: ViewModel() {
         val id = firestore.collection("chats").document().collection("message").document().id
         val time = Calendar.getInstance().time
         val message = Message(
-            reaction = "",
             msgId = id,
             imgUrl = imgUrl,
             senderId = state.value.userData?.userId.toString(),
@@ -320,7 +322,7 @@ class ChatViewModel: ViewModel() {
                 for (document in querySnapshot.documents) {
                     val userId = document.getString("userId")
                     if (userId == userData.userId) {
-                        document.reference.update("ppurl", userData.ppurl)
+                        document.reference.update("ppurl", userData.ppurl, "username", userData.username)
                     }
                 }
             }
@@ -331,7 +333,7 @@ class ChatViewModel: ViewModel() {
     }
 
    fun getUserData(userId: String){
-        usersCollection.document(userId).addSnapshotListener { value, error ->
+        userDataListener = usersCollection.document(userId).addSnapshotListener { value, error ->
             if(value!=null){
                 _state.update { it.copy(userData = value.toObject(UserData::class.java)) }
             }
@@ -353,26 +355,79 @@ class ChatViewModel: ViewModel() {
 
     }
 
-    fun deleteChat(chatId: String) {
-        firestore.collection("chats").document(chatId).delete()
-        firestore.collection("chats").document(chatId).collection("message").get()
-            .addOnSuccessListener { querySnapshot ->
-                for (document in querySnapshot.documents) {
-                    document.reference.delete()
-                        .addOnSuccessListener {
-                            println("Document deleted successfully.")
-                        }
-                        .addOnFailureListener { e ->
-                            println("Error deleting document: $e")
-                        }
+    fun deleteChat(chatIds: List<String>) {
+        for (id in chatIds){
+            firestore.collection("chats").document(id).delete()
+            firestore.collection("chats").document(id).collection("message").get()
+                .addOnSuccessListener { querySnapshot ->
+                    for (document in querySnapshot.documents) {
+                        document.reference.delete()
+                            .addOnSuccessListener {
+                                println("Document deleted successfully.")
+                            }
+                            .addOnFailureListener { e ->
+                                println("Error deleting document: $e")
+                            }
+                    }
                 }
-            }
-            .addOnFailureListener { e ->
-                println("Error getting documents: $e")
-            }
+                .addOnFailureListener { e ->
+                    println("Error getting documents: $e")
+                }
+        }
+
+    }
+    fun deleteStory(id: String){
+        firestore.collection("stories").document(id).delete()
     }
     fun Reaction(str: String, chatId: String, msgId: String){
-        firestore.collection("chats").document(chatId).collection("message").document(msgId).update("reaction", str)
+        val reaction = Reaction (
+        ppurl = state.value.userData?.ppurl.toString(),
+        username = state.value.userData?.username.toString(),
+        userId = state.value.userData?.userId.toString(),
+        reaction = str
+        )
+        firestore.collection("chats")
+            .document(chatId)
+            .collection("message")
+            .document(msgId)
+            .get()
+            .addOnSuccessListener { messageSnapshot ->
+                val existingReactions = messageSnapshot.toObject<Message>()?.reaction ?: emptyList()
+                val existingUserReaction = existingReactions.find { it.userId == state.value.userData?.userId }
+                if (existingUserReaction == null) {
+                    firestore.collection("chats")
+                        .document(chatId)
+                        .collection("message")
+                        .document(msgId)
+                        .update("reaction", FieldValue.arrayUnion(reaction))
+                } else {
+                    val updatedReactions = existingReactions.map {
+                        if (it.userId == state.value.userData?.userId) reaction else it
+                    }
+                    firestore.collection("chats")
+                        .document(chatId)
+                        .collection("message")
+                        .document(msgId)
+                        .update("reaction", updatedReactions)
+                }
+            }
+    }
+
+    fun removeReaction(chatId: String, msgId: String) {
+        firestore.collection("chats")
+            .document(chatId)
+            .collection("message")
+            .document(msgId)
+            .get()
+            .addOnSuccessListener { messageSnapshot ->
+                val existingReactions = messageSnapshot.toObject<Message>()?.reaction ?: emptyList()
+                val updatedReactions = existingReactions.filter { it.userId != state.value.userData?.userId }
+                firestore.collection("chats")
+                    .document(chatId)
+                    .collection("message")
+                    .document(msgId)
+                    .update("reaction", updatedReactions)
+            }
     }
     suspend fun typing(t: Boolean, chatId: String, userId: String) {
         val chatRef = firestore.collection("chats").document(chatId)
@@ -480,6 +535,7 @@ class ChatViewModel: ViewModel() {
     }
 
     fun updateStatus(status: Boolean){
+        println("status:" + status)
         firestore.collection("chats").get()
             .addOnSuccessListener { querySnapshot ->
                 for (document in querySnapshot.documents) {
@@ -498,8 +554,15 @@ class ChatViewModel: ViewModel() {
 
     fun resetState() {
         _state.update { AppState() }
+        stories = emptyList()
+        chats = emptyList()
+        myStory = Story()
     }
-
+    fun removeL(){
+        storyListener?.remove()
+        chatListener?.remove()
+        userDataListener?.remove()
+    }
     fun showAnim(){
         _state.update { it.copy( showAnim = true) }
     }
