@@ -1,14 +1,14 @@
 package com.example.convoix.Dialogs
 
+import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,25 +35,41 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import coil.ImageLoader
 import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
+import coil.compose.rememberImagePainter
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
 import com.example.convoix.AppState
 import com.example.convoix.Firebase.Story
+import com.example.convoix.R
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun StoryDialog(appState: AppState, story: Story, hideDialog:()->Unit, deleteStory:()->Unit ){
+fun StoryDialog(appState: AppState, story: Story, hideDialog:()->Unit, deleteStory:(Int)->Unit ){
     val formatter = remember {
         SimpleDateFormat(("hh:mm a"), Locale.getDefault())
     }
+    var dialog by remember {
+        mutableStateOf(false)
+    }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pagerState = rememberPagerState(
+        pageCount = { story.images.size }, initialPage = 0
+    )
     Dialog(onDismissRequest = hideDialog,
         properties = DialogProperties(
             usePlatformDefaultWidth = false
@@ -61,48 +79,16 @@ fun StoryDialog(appState: AppState, story: Story, hideDialog:()->Unit, deleteSto
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background.copy(alpha = 0.7f))) {
         }
-        var scale by remember {
-            mutableStateOf(1f)
-        }
-        var offset by remember {
-            mutableStateOf(Offset.Zero)
-        }
-        val interactionSource = remember { MutableInteractionSource() }
-        var show by remember {
-            mutableStateOf(true)
-        }
-        BoxWithConstraints {
-            val state = rememberTransformableState{ zoomChange, panChange, rotationChange ->
-                scale = (scale*zoomChange).coerceIn(1f,5f)
-                val extWidth = (scale - 1)*constraints.maxWidth
-                val extHeight = (scale -1) * constraints.maxHeight
-                val maxX = extWidth/2
-                val maxY = extHeight/2
-                offset = Offset(
-                    x=(offset.x + scale * panChange.x).coerceIn(-maxX,maxX),
-                    y=(offset.y + scale * panChange.y).coerceIn(-maxY,maxY)
+            HorizontalPager(state = pagerState) {
+                AsyncImage(
+                    model = story.images[it].imgUrl,
+                    contentDescription = "Profile picture",
+                    modifier = Modifier
+                        .clickable(interactionSource = interactionSource, indication = null) {}
+                        .fillMaxSize()
                 )
             }
-            AsyncImage(
-                model = story.imageUrl,
-                contentDescription = "Profile picture",
-                modifier = Modifier
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null
-                    ) {
-                        show = !show
-                    }
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                        translationX = offset.x
-                        translationY = offset.y
-                    }
-                    .transformable(state)
-            )
-            AnimatedVisibility(visible = show, enter = fadeIn(), exit = fadeOut()) {
+            AnimatedVisibility(visible = !isPressed, enter = fadeIn(), exit = fadeOut()) {
                 Row(modifier = Modifier
                     .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
                     .padding(16.dp)
@@ -126,21 +112,23 @@ fun StoryDialog(appState: AppState, story: Story, hideDialog:()->Unit, deleteSto
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = formatter.format(story.time?.toDate()!!),
+                            text = formatter.format(story.images[pagerState.currentPage].time?.toDate()!!),
                             color = Color.LightGray,
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Light)
                         )
                     }
                     Spacer(modifier = Modifier.weight(1f))
                     if(story.userId==appState.userData?.userId){
-                        IconButton(onClick = { deleteStory()
-                        hideDialog() }) {
+                        IconButton(onClick = {dialog=true }) {
                             Icon(imageVector = Icons.Filled.Delete, contentDescription = null)
                         }
                     }
-
                 }
             }
-        }
+    }
+    AnimatedVisibility(visible = dialog) {
+        DeleteStoryDialog(hideDialog = { dialog = false }, deleteStory = { deleteStory(pagerState.currentPage)
+            dialog = false
+        hideDialog()})
     }
 }

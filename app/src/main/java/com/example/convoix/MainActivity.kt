@@ -18,9 +18,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
@@ -65,10 +62,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            var isDark by rememberSaveable {
-                mutableStateOf(true)
-            }
-            ConvoixTheme(darkTheme = isDark) {
+            ConvoixTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -175,7 +169,7 @@ class MainActivity : ComponentActivity() {
                             targetOffsetX = { fullWidth -> fullWidth },
                             animationSpec = tween(200)
                         )}){
-                            Settings(navController, changeTheme = {isDark = !isDark}, isDark)
+                            Settings(navController)
                         }
                         composable("cus",enterTransition = { slideInHorizontally(
                             initialOffsetX = { fullWidth -> fullWidth },

@@ -434,18 +434,6 @@ fun Chat(navController: NavController,
                     .fillMaxWidth(),
                 reverseLayout = true
             ) {
-                item {
-                    if(userData.userId==tp.user1?.userId){
-                        AnimatedVisibility(tp.user1.typing) {
-                            loading()
-                        }
-                    }
-                    if(userData.userId==tp.user2?.userId){
-                        AnimatedVisibility(tp.user2.typing) {
-                            loading()
-                        }
-                    }
-                }
                 items(messages.size) { index ->
                     val message = messages[index]
                     val prevMessage = if (index > 0) messages[index - 1] else null
@@ -473,6 +461,16 @@ fun Chat(navController: NavController,
                             isModalBottomSheetVisible=true },
                         removeReaction = { viewModel.removeReaction(chatId, message.msgId) }
                         )
+                }
+            }
+            if(userData.userId==tp.user1?.userId){
+                AnimatedVisibility(tp.user1.typing) {
+                    Loading()
+                }
+            }
+            if(userData.userId==tp.user2?.userId){
+                AnimatedVisibility(tp.user2.typing) {
+                    Loading()
                 }
             }
             AnimatedVisibility(editMsgId.length>0) {
@@ -898,7 +896,7 @@ fun Upload(
 }
 
 @Composable
-fun loading(){
+fun Loading(){
     val context = LocalContext.current
     val imageLoader = ImageLoader.Builder(context)
         .components {

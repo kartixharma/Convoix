@@ -83,7 +83,7 @@ private val DarkColors = darkColorScheme(
 
 @Composable
 fun ConvoixTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true,
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
@@ -106,7 +106,7 @@ fun ConvoixTheme(
     }
 
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = DarkColors,
         typography = Typography,
         content = content
     )

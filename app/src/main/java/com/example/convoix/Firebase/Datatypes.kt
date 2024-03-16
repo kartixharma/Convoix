@@ -65,8 +65,12 @@ data class Story(
     val id: String = "",
     val userId: String = "",
     val username: String? = "",
-    val imageUrl: String = "",
-    val time: Timestamp? = Timestamp.now(),
+    val images: List<Image> = emptyList(),
     val ppurl: String = "",
     val viewedBy: List<String> = emptyList()
+)
+
+data class Image(
+    val imgUrl: String = "",
+    val time: Timestamp? = Timestamp.now()
 )

@@ -243,7 +243,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                 story = curStory,
                 hideDialog = { showStory = !showStory
                     selectedItem.clear() },
-                deleteStory = { viewModel.deleteStory(curStory.id) }
+                deleteStory = { viewModel.deleteStory(curStory, it) }
             )
         }
         AnimatedVisibility(state.showDialog){
@@ -264,7 +264,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
             StoryPreview(bitmap = bitmap, hideDialog = { imgUri=null }, upload = {
                 isUploading = true
                 viewModel.UploadImage1(imgUri!!){
-                    viewModel.uploadStory(it)
+                    viewModel.uploadStory(it, myStory[0].id)
                     isUploading = false
                 }
                 imgUri = null

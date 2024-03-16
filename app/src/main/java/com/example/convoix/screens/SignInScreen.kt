@@ -38,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -64,73 +65,57 @@ fun SignInScreen(
     state: AppState,
     onSignInCLick:() -> Unit,
 ) {
-    val comp by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.done))
     val brush = Brush.linearGradient(
         listOf(
             Color(0xFF238CDD),
             Color(0xFF255DCC)
         )
     )
-    Column(modifier = Modifier)
-    {
-        Image(
-            modifier = Modifier
+    Image(
+        modifier = Modifier
                 .fillMaxSize(),
-            contentScale = ContentScale.Crop,
-            painter = painterResource(R.drawable.login),
-            contentDescription = null
+        contentScale = ContentScale.Crop,
+        painter = painterResource(R.drawable.login_blur),
+        contentDescription = null
         )
-    }
-
     Column(
-        modifier = Modifier.padding(bottom = 200.dp),
-        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (!state.showAnim) {
-            Image(
-                modifier = Modifier
-                    .size(200.dp),
-                painter = painterResource(R.drawable.oig3),
-                contentDescription = null
+        Spacer(modifier = Modifier.height(80.dp))
+        Image(
+            modifier = Modifier,
+            painter = painterResource(R.drawable.oig4__rndcloiljdx4hxpn),
+            contentDescription = null
+        )
+        Text(text = "Convoix",
+            style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.ExtraBold),
+            color = Color(0xFF1D1D1D))
+        Text(modifier = Modifier.padding(horizontal = 20.dp),
+            text = "Dive in and connect with friends, share stories, and discover new perspectives.",
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center, color = Color(0xFF1D1D1D))
+        Spacer(modifier = Modifier.height(70.dp))
+        Button(
+            onClick = onSignInCLick,
+            modifier = Modifier
+                .background(brush, CircleShape)
+                .fillMaxWidth(0.7f)
+                .height(60.dp),
+            colors = ButtonDefaults.buttonColors(Color.Transparent),
+            shape = CircleShape
+        ) {
+            Text(
+                modifier = Modifier.padding(end = 20.dp),
+                text = "Continue with Google",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Image(modifier = Modifier.scale(1.2f),
+                painter = painterResource(id = R.drawable.goog_0ed88f7c),
+                contentDescription = null,
             )
         }
     }
-    Column(
-        modifier = Modifier.padding(bottom = 200.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        AnimatedVisibility(state.showAnim) {
-            LottieAnimation(modifier = Modifier.size(250.dp), composition = comp)
-        }
-    }
-    Column(
-        modifier = Modifier.padding(top = 200.dp)
-            .fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-            Button(
-                onClick = onSignInCLick,
-                modifier = Modifier
-                    .background(brush, CircleShape)
-                    .fillMaxWidth(0.7f)
-                    .height(60.dp),
-                colors = ButtonDefaults.buttonColors(Color.Transparent),
-                shape = CircleShape
-            ) {
-                Text(
-                    modifier = Modifier.padding(end = 20.dp),
-                    text = "Continue with Google",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Image(modifier = Modifier.size(30.dp),
-                    painter = painterResource(id = R.drawable.goog_0ed88f7c),
-                    contentDescription = null,
-                )
-            }
 
-    }
 }

@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.example.convoix.Firebase.ChatData
 import com.example.convoix.Firebase.ChatUserData
+import com.example.convoix.Firebase.Image
 import com.example.convoix.Firebase.Message
 import com.example.convoix.Firebase.Pref
 import com.example.convoix.Firebase.SignInResult
@@ -63,17 +64,25 @@ class ChatViewModel: ViewModel() {
             )
         }
     }
-    fun uploadStory(url: String){
-        val id = firestore.collection("stories").document().id
-        val story = Story(
-            id = id,
-            userId = state.value.userData?.userId.toString(),
-            username = state.value.userData?.username,
-            imageUrl = url,
-            time = Timestamp(Calendar.getInstance().time),
-            ppurl = state.value.userData?.ppurl.toString(),
+    fun uploadStory(url: String, storyId: String) {
+        val image = Image(
+            imgUrl = url,
+            time = Timestamp(Calendar.getInstance().time)
         )
-        firestore.collection("stories").document(id).set(story)
+        if(storyId.isNotBlank()){
+            firestore.collection("stories").document(storyId).update("images", FieldValue.arrayUnion(image))
+        }
+        else{
+            val id = firestore.collection("stories").document().id
+            val story = Story(
+                id = id,
+                userId = state.value.userData?.userId.toString(),
+                username = state.value.userData?.username,
+                images = listOf(image),
+                ppurl = state.value.userData?.ppurl.toString(),
+            )
+            firestore.collection("stories").document(id).set(story)
+        }
     }
     fun viewStory(id: String){
         firestore.collection("stories").document(id).update("viewedBy", FieldValue.arrayUnion(state.value.userData?.userId))
@@ -374,9 +383,17 @@ class ChatViewModel: ViewModel() {
         }
 
     }
-    fun deleteStory(id: String){
-        firestore.collection("stories").document(id).delete()
+
+    fun deleteStory(story: Story, number: Int){
+        if (story.images.size==1){
+            firestore.collection("stories").document(story.id).delete()
+        }
+        else{
+           val newStory =  story.images.filter { story.images[number]!=it }
+            firestore.collection("stories").document(story.id).update("images", newStory)
+        }
     }
+
     fun Reaction(str: String, chatId: String, msgId: String){
         val reaction = com.example.convoix.Firebase.Reaction(
             ppurl = state.value.userData?.ppurl.toString(),
@@ -385,27 +402,18 @@ class ChatViewModel: ViewModel() {
             reaction = str
         )
         firestore.collection("chats")
-            .document(chatId)
-            .collection("message")
-            .document(msgId)
-            .get()
+            .document(chatId).collection("message").document(msgId).get()
             .addOnSuccessListener { messageSnapshot ->
                 val existingReactions = messageSnapshot.toObject<Message>()?.reaction ?: emptyList()
                 val existingUserReaction = existingReactions.find { it.userId == state.value.userData?.userId }
                 if (existingUserReaction == null) {
-                    firestore.collection("chats")
-                        .document(chatId)
-                        .collection("message")
-                        .document(msgId)
+                    firestore.collection("chats").document(chatId).collection("message").document(msgId)
                         .update("reaction", FieldValue.arrayUnion(reaction))
                 } else {
                     val updatedReactions = existingReactions.map {
                         if (it.userId == state.value.userData?.userId) reaction else it
                     }
-                    firestore.collection("chats")
-                        .document(chatId)
-                        .collection("message")
-                        .document(msgId)
+                    firestore.collection("chats").document(chatId).collection("message").document(msgId)
                         .update("reaction", updatedReactions)
                 }
             }

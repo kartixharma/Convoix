@@ -30,7 +30,7 @@ import androidx.navigation.NavController
 import com.example.convoix.R
 
 @Composable
-fun Settings(navController: NavController, changeTheme:()->Unit, isDark: Boolean) {
+fun Settings(navController: NavController) {
     Image(
         painter = painterResource(id = R.drawable.blurry_gradient_haikei),
         contentDescription = "",
@@ -49,14 +49,12 @@ fun Settings(navController: NavController, changeTheme:()->Unit, isDark: Boolean
             modifier = Modifier.padding(vertical = 16.dp, horizontal = 16.dp)
         )
         SettingOption(
-            isDark,
             title = "Customization",
             description = "Customize your chat screen",
             onClick = { navController.navigate("cus")},
             painter = painterResource(R.drawable.equalizer)
         )
         SettingOption(
-            isDark,
             title = "Blocked Users",
             description = "View and manage blocked users",
             onClick = { navController.navigate("blck") },
@@ -68,7 +66,6 @@ fun Settings(navController: NavController, changeTheme:()->Unit, isDark: Boolean
 
 @Composable
 fun SettingOption(
-    isDark: Boolean,
     painter: Painter,
     title: String,
     description: String,
@@ -100,7 +97,7 @@ fun SettingOption(
             Text(
                 text = description,
                 style = MaterialTheme.typography.titleMedium,
-                color = if(isDark) Color.LightGray else Color.DarkGray,
+                color = Color.LightGray,
                 modifier = Modifier.padding(bottom = 10.dp)
             )
         }
