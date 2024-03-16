@@ -121,7 +121,7 @@ class ChatViewModel: ViewModel() {
 
     fun getTp(chatId: String) {
         tpListener?.remove()
-        tpListener = firestore.collection("chats").document(chatId).addSnapshotListener{ snp, err->
+        tpListener = firestore.collection("chats").document(chatId).addSnapshotListener { snp, err->
             if (snp != null) {
                 tp = snp.toObject(ChatData::class.java)!!
             }
