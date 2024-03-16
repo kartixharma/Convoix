@@ -55,6 +55,7 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.convoix.AppState
 import com.example.convoix.ChatViewModel
 import com.example.convoix.Dialogs.ProfileEditDialog
+import com.example.convoix.Dialogs.StoryPreview
 import com.example.convoix.R
 import com.example.convoix.Firebase.UserData
 import com.example.convoix.Dialogs.View
@@ -222,29 +223,11 @@ fun ProfileScreen(
         Color(0xFF238CDD),
         Color(0xFF1952C4)
     ))
-    val brush2 = Brush.linearGradient(listOf(
-        Color(0xFFA02424),
-        Color(0xFFC43B56)
-    ))
     Column(
         verticalArrangement = Arrangement.Bottom,
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.padding(bottom = 50.dp)
     ) {
-       // Button(
-       //     onClick = { onSignOut() },
-      //      modifier = Modifier
-        //        .background(brush2, CircleShape)
-       //         .fillMaxWidth(0.7f)
-        //        .height(50.dp), colors = ButtonDefaults.buttonColors(Color.Transparent), shape = CircleShape
-      //  ) {
-      //      Text(
-       //         text = "Delete account",
-       //         color = Color.White,
-       //         fontSize = 18.sp,
-       //         fontWeight = FontWeight.SemiBold
-       //     )
-      //  }
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = {
@@ -272,16 +255,7 @@ fun ProfileScreen(
             val src = ImageDecoder.createSource(context.contentResolver, it)
             bitmap = ImageDecoder.decodeBitmap(src)
         }
-        Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-            Image(bitmap = bitmap?.asImageBitmap()!!, contentDescription = null, modifier = Modifier
-                .fillMaxWidth()
-                .size(400.dp)
-                .padding(10.dp))
-            ElevatedButton(onClick = { uploadImage(); imgUri = null;isLoading=true  }) {
-                Text(text = "Upload")
-            }
-        }
-
+        StoryPreview(bitmap = bitmap, hideDialog = { imgUri = null }, upload = { uploadImage(); imgUri = null;isLoading=true })
     }
     AnimatedVisibility(viewImage) {
         View(imageUrl = user?.ppurl.toString(), hideDialog = {viewImage=false})
