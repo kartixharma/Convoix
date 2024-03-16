@@ -524,7 +524,7 @@ class ChatViewModel: ViewModel() {
             .post(body)
             .header(
                 "Authorization",
-                "Bearer AAAAlorsm6Q:APA91bFEkuDzNjb3MvyVFVwKRRHW_q8FP3Z3KDDx9386P-WGRDwcyubfbhl0DJSYklaUXevWmEqyGRt-nAZYxK5HLT9StEvGwqrY6yPZI81rdwNPKnuxxPk9wvawtA6E7hyds5lvgwPU"
+                "Bearer [YOUR_SERVER_KEY]"
             )
             .build()
 
