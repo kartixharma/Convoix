@@ -6,14 +6,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -34,13 +32,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.convoix.ChatUserData
+import com.example.convoix.Firebase.ChatUserData
 import com.example.convoix.R
-import com.example.convoix.View
+import com.example.convoix.Dialogs.View
 
 @Composable
 fun OtherProfile(
-    user: ChatUserData , navController: NavController
+    user: ChatUserData, navController: NavController
 ) {
     var viewImage by remember {
         mutableStateOf(false)
@@ -58,7 +56,7 @@ fun OtherProfile(
         contentScale = ContentScale.Crop,
     )
     Box {
-        Image(modifier = Modifier.fillMaxWidth(),painter = painterResource(id = if(isSystemInDarkTheme()) R.drawable.screen1 else R.drawable.screen),
+        Image(modifier = Modifier.fillMaxSize(),painter = painterResource(id = R.drawable.screen1),
             contentDescription = null)
         IconButton(modifier = Modifier.padding(top = 40.dp, start = 10.dp), onClick = { navController.popBackStack() }) {
             Icon(imageVector = Icons.Filled.ArrowBackIosNew, contentDescription = null)

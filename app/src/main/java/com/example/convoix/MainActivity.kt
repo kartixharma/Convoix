@@ -26,6 +26,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.convoix.Firebase.GoogleAuthUiClient
 import com.example.convoix.screens.BlockedUsers
 import com.example.convoix.screens.Chat
 import com.example.convoix.screens.ChatScreen
@@ -33,10 +34,9 @@ import com.example.convoix.screens.Customization
 import com.example.convoix.screens.OtherProfile
 import com.example.convoix.screens.ProfileScreen
 import com.example.convoix.screens.Settings
-import com.example.convoix.screens.SignInScreen1
+import com.example.convoix.screens.SignInScreen
 import com.example.convoix.ui.theme.ConvoixTheme
 import com.google.android.gms.auth.api.identity.Identity
-import com.google.firebase.Firebase
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -122,7 +122,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }
-                            SignInScreen1(state = state,
+                            SignInScreen(state = state,
                                 onSignInCLick = {
                                     lifecycleScope.launch {
                                         val signInIntentSender = googleAuthUiClient.signIn()
@@ -132,14 +132,7 @@ class MainActivity : ComponentActivity() {
                                             ).build()
                                         )
                                     }
-                                },
-                                custom = {email, pass ->
-                                    lifecycleScope.launch {
-                                        val result = googleAuthUiClient.signInWithEmailAndPassword(email, pass)
-                                        viewModel.onSignInResult(result)
-                                    }
-                                },
-                                googleAuthUiClient
+                                }
                             )
                         }
                         composable("chats"){

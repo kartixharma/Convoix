@@ -1,6 +1,5 @@
-package com.example.convoix
+package com.example.convoix.Firebase
 
-import androidx.compose.ui.unit.TextUnit
 import com.google.firebase.Timestamp
 
 data class SignInResult (

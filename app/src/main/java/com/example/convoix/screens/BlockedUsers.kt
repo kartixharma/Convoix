@@ -38,7 +38,7 @@ import com.example.convoix.AppState
 import com.example.convoix.ChatViewModel
 import com.example.convoix.Dialogs.UnblockDialog
 import com.example.convoix.R
-import com.example.convoix.UserData
+import com.example.convoix.Firebase.UserData
 
 @Composable
 fun BlockedUsers(

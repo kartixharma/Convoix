@@ -21,7 +21,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,11 +47,8 @@ import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.InsertPhoto
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.CopyAll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -68,13 +64,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -86,10 +80,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -97,7 +89,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -113,17 +104,15 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.convoix.AppState
-import com.example.convoix.ChatUserData
+import com.example.convoix.Firebase.ChatUserData
 import com.example.convoix.ChatViewModel
 import com.example.convoix.ClearChatDialog
+import com.example.convoix.Dialogs.ImagePreview
 import com.example.convoix.Dialogs.ImageViewer
-import com.example.convoix.Message
+import com.example.convoix.Firebase.Message
 import com.example.convoix.Dialogs.MsgDeleteDialog
 import com.example.convoix.R
-import com.example.convoix.View
-import com.example.convoix.ui.theme.md_theme_dark_background
 import com.makeappssimple.abhimanyu.composeemojipicker.ComposeEmojiPickerBottomSheetUI
-import com.makeappssimple.abhimanyu.composeemojipicker.ComposeEmojiPickerEmojiUI
 import com.makeappssimple.abhimanyu.composeemojipicker.utils.capitalizeWords
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
@@ -412,12 +401,27 @@ fun Chat(navController: NavController,
             ClearChatDialog(hideDialog = { clearChatDialog = false}, clearChat = { viewModel.clearChat(chatId); clearChatDialog=false })
         }
         AnimatedVisibility(msg.imgUrl!="") {
-           ImageViewer(userData = userData, hideDialog = { msg=Message() }, message = msg)
+           ImageViewer(userData = userData, hideDialog = { msg= Message() }, message = msg)
         }
         fun compressImage(): ByteArray {
             val outputStream = ByteArrayOutputStream()
             bitmap?.compress(Bitmap.CompressFormat.JPEG, 30, outputStream)
             return outputStream.toByteArray()
+        }
+        imgUri?.let {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val src = ImageDecoder.createSource(context.contentResolver,it)
+                bitmap = ImageDecoder.decodeBitmap(src)
+            }
+           ImagePreview(bitmap = bitmap, hideDialog = { imgUri=null }, send = {
+               isLoading = true
+               val reply1 = it
+               viewModel.UploadImage(compressImage()) { imageUrl ->
+                   viewModel.sendReply(chatId = chatId, msg = reply1, imgUrl = imageUrl)
+                   isLoading = false
+               }
+               imgUri = null
+           })
         }
         Column(
             modifier = Modifier
@@ -499,18 +503,6 @@ fun Chat(navController: NavController,
                             .padding(8.dp))
                 }
             }
-            imgUri?.let {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    val src = ImageDecoder.createSource(context.contentResolver,it)
-                    bitmap = ImageDecoder.decodeBitmap(src)
-                }
-                Image(bitmap = bitmap?.asImageBitmap()!!, contentDescription = null, modifier = Modifier
-                    .fillMaxWidth()
-                    .size(300.dp)
-                    .background(MaterialTheme.colorScheme.secondaryContainer)
-                    .padding(10.dp))
-
-            }
             if(isLoading){
                 Upload(content = reply, state = state, bitmap)
             }
@@ -563,25 +555,15 @@ fun Chat(navController: NavController,
                             unfocusedIndicatorColor = Color.Transparent
                         ),
                         )
-                    AnimatedVisibility(reply.isNotEmpty() || imgUri!=null) {
+                    AnimatedVisibility(reply.isNotEmpty()) {
                         IconButton(modifier = Modifier
                             .padding(end = 4.dp)
                             .background(brush, CircleShape) ,
                             onClick = {
                             if(editMsgId.length==0){
-                                if (imgUri == null) {
-                                    viewModel.sendReply(msg = reply, chatId = chatId, imgUrl = "")
-                                    reply = ""
-                                } else {
-                                    isLoading = true
-                                    val reply1 = reply
-                                    reply=""
-                                    viewModel.UploadImage(compressImage()) { imageUrl ->
-                                        viewModel.sendReply(chatId = chatId, msg = reply1, imgUrl = imageUrl)
-                                        isLoading = false
-                                    }
-                                    imgUri = null
-                                }
+                                viewModel.sendReply(msg = reply, chatId = chatId, imgUrl = "")
+                                reply = ""
+
                             }
                             else{
                                 viewModel.editMessage(editMsgId, chatId, reply)
@@ -626,14 +608,6 @@ fun MessageItem(message: Message,
         Color(0xFF2A4783),
         Color(0xFF2F6086)
     ))
-    val brush3 = Brush.linearGradient(listOf(
-        Color(0xFF9465FF),
-        Color(0xFF6723D1)
-    ))
-    val brush4 = Brush.linearGradient(listOf(
-        Color(0xFF54308D),
-        Color(0xFF5E449B)
-    ))
     val isCurrentUser = state.userData?.userId == message.senderId
     val shape = if(isCurrentUser){
         if(prevId==message.senderId && nextId==message.senderId){
@@ -674,7 +648,7 @@ fun MessageItem(message: Message,
     var showReactions by remember {
         mutableStateOf(false)
     }
-    val clkcolor = if(isSelected) MaterialTheme.colorScheme.onPrimary else Color.Transparent
+    val clkcolor = if(isSelected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f) else Color.Transparent
     Box(
         modifier = Modifier
             .background(clkcolor)

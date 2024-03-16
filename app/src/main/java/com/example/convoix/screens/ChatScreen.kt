@@ -13,7 +13,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -26,37 +25,31 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.AddComment
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.OutlinedTextField
@@ -73,12 +66,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
@@ -87,17 +78,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -108,17 +96,16 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.convoix.AppState
-import com.example.convoix.ChatData
-import com.example.convoix.ChatUserData
+import com.example.convoix.Firebase.ChatData
+import com.example.convoix.Firebase.ChatUserData
 import com.example.convoix.ChatViewModel
 import com.example.convoix.Dialogs.CustomDialogBox
 import com.example.convoix.Dialogs.DeleteDialog
 import com.example.convoix.Dialogs.StoryDialog
+import com.example.convoix.Dialogs.StoryPreview
 import com.example.convoix.R
-import com.example.convoix.Story
+import com.example.convoix.Firebase.Story
 import com.primex.core.ExperimentalToolkitApi
-import com.primex.core.blur.legacyBackgroundBlur
-import com.primex.core.noise
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -131,6 +118,17 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+    }
+    val myStoryVm = viewModel.stories.filter {
+        it.userId==state.userData?.userId
+    }
+    val myStory = if (myStoryVm.isEmpty()) {
+        listOf(Story())
+    } else {
+        myStoryVm
+    }
+    val stories = viewModel.stories.filter {
+        it.userId!=state.userData?.userId
     }
     val chats = viewModel.chats
     var searchText by rememberSaveable { mutableStateOf("") }
@@ -211,6 +209,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
         showSearch=false
         selectedItem.clear()
         selectionMode=false
+        imgUri=null
     }
     Scaffold(
         floatingActionButton = {
@@ -257,6 +256,20 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                     setEmail = {viewModel.setSrEmail(it)}
                 )
         }
+        imgUri?.let {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val src = ImageDecoder.createSource(LocalContext.current.contentResolver,it)
+                bitmap = ImageDecoder.decodeBitmap(src)
+            }
+            StoryPreview(bitmap = bitmap, hideDialog = { imgUri=null }, upload = {
+                isUploading = true
+                viewModel.UploadImage1(imgUri!!){
+                    viewModel.uploadStory(it)
+                    isUploading = false
+                }
+                imgUri = null
+            })
+            }
         Column(modifier = Modifier
             .padding(top = 36.dp)) {//.background(colorScheme.primaryContainer)
             Box {
@@ -313,8 +326,8 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                             colors = TextFieldDefaults.colors(
                                 unfocusedContainerColor = Color.Transparent.copy(alpha = 0.2f),
                                 focusedContainerColor = Color.Transparent.copy(alpha = 0.2f),
-                                focusedIndicatorColor = Color.Gray,
-                                unfocusedIndicatorColor = Color.DarkGray,
+                                focusedIndicatorColor = Color(0xFF35567A),
+                                unfocusedIndicatorColor = Color(0xFF233E5C),
                                 unfocusedLeadingIconColor = Color.White,
                                 focusedLeadingIconColor = Color.White,
                                 unfocusedTrailingIconColor = Color.White,
@@ -324,7 +337,8 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                                 focusedTextColor = Color.White,
                                 unfocusedTextColor = Color.White
                             ),
-                            leadingIcon = { Icon(imageVector = Icons.Rounded.Search, contentDescription = null)},
+                            leadingIcon = { Icon(modifier = Modifier.size(25.dp),
+                                painter = painterResource(id = R.drawable._666693_search_icon), contentDescription = null)},
                             trailingIcon = {
                                 if(!searchText.isBlank())
                                     IconButton(onClick = { searchText = ""}) {
@@ -357,7 +371,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                         Spacer(modifier = Modifier.weight(1f))
                         IconButton(modifier = Modifier
                             .background(colorScheme.background.copy(alpha = 0.2f), CircleShape)
-                            .border(0.05.dp, Color.DarkGray, CircleShape),
+                            .border(0.05.dp, Color(0xFF35567A), CircleShape),
                                 onClick = { showSearch = true }) {
                             Icon(
                                 modifier = Modifier.scale(0.7f),
@@ -369,7 +383,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                         Column {
                             IconButton(modifier = Modifier
                                 .background(colorScheme.background.copy(alpha = 0.2f), CircleShape)
-                                .border(0.05.dp, Color.DarkGray, CircleShape),
+                                .border(0.05.dp, Color(0xFF35567A), CircleShape),
                                 onClick = { expanded=true }) {
                                 Icon(
                                     modifier = Modifier.scale(1.3f),
@@ -403,35 +417,14 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                                                 style = MaterialTheme.typography.bodyLarge
                                             )
                                         },
-                                        onClick = { navController.navigate("settings") }
+                                        onClick = { navController.navigate("settings")
+                                            expanded=false}
                                     )
                                 }
                             }
                         }
                     }
                 }
-            }
-            imgUri?.let {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    val src = ImageDecoder.createSource(LocalContext.current.contentResolver,it)
-                    bitmap = ImageDecoder.decodeBitmap(src)
-                }
-                Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                    Image(bitmap = bitmap?.asImageBitmap()!!, contentDescription = null, modifier = Modifier
-                        .fillMaxWidth()
-                        .size(400.dp)
-                        .padding(10.dp))
-                    Button(onClick = {
-                        isUploading = true
-                        viewModel.UploadImage1(imgUri!!){
-                            viewModel.uploadStory(it)
-                            isUploading = false
-                        }
-                        imgUri = null  }) {
-                        Text(text = "Upload")
-                    }
-                }
-
             }
             AnimatedVisibility(!showSearch){
                 LazyRow {
@@ -440,7 +433,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                             Box(
                                 modifier = Modifier
                                     .clickable {
-                                        curStory = viewModel.myStory
+                                        curStory = myStory[0]
                                         showStory = true
                                     }
                                     .padding(horizontal = 6.dp, vertical = 5.dp)
@@ -463,11 +456,11 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                                 LottieAnimation(composition = comp, iterations = LottieConstants.IterateForever)
                             }
                         }
-                        if(viewModel.myStory.userId.length>0 && !isUploading){
+                        if(myStory[0].userId.length>0 && !isUploading){
                             Box(
                                 modifier = Modifier
                                     .clickable {
-                                        curStory = viewModel.myStory
+                                        curStory = myStory[0]
                                         showStory = true
                                     }
                                     .padding(horizontal = 6.dp, vertical = 5.dp)
@@ -477,7 +470,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                             ) {
                                     AsyncImage(
                                         model = ImageRequest.Builder(LocalContext.current)
-                                            .data(viewModel.myStory.ppurl)
+                                            .data(myStory[0].ppurl)
                                             .crossfade(true)
                                             .allowHardware(false)
                                             .build(),
@@ -495,7 +488,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                                         imageVector = Icons.Filled.AddCircle, contentDescription = null)
                             }
                         }
-                        if(viewModel.myStory.userId.length==0 && !isUploading){
+                        if(myStory[0].userId.length==0 && !isUploading){
                             Box(modifier = Modifier
                                 .padding(vertical = 15.dp, horizontal = 10.dp)
                                 .size(70.dp)
@@ -530,7 +523,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                             }
                         }
                     }
-                    items(viewModel.stories){
+                    items(stories){
                         Box(
                             modifier = Modifier
                                 .clickable {
@@ -572,7 +565,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                     colorScheme.background.copy(alpha = 0.2f),
                     RoundedCornerShape(30.dp, 30.dp)
                 )
-                .border(0.05.dp, Color.DarkGray, RoundedCornerShape(30.dp, 30.dp))){
+                .border(0.05.dp, Color(0xFF35567A), RoundedCornerShape(30.dp, 30.dp))){
                 item {
                     Text(
                         text = "Chats",
@@ -610,7 +603,7 @@ fun ChatItem(state: AppState,
     val formatter = remember {
         SimpleDateFormat(("hh:mm a"), Locale.getDefault())
     }
-    val color = if(!isSelected) Color.Transparent else colorScheme.secondaryContainer
+    val color = if(!isSelected) Color.Transparent else colorScheme.onPrimary
     Row(
         modifier = Modifier
             .background(color)
@@ -706,14 +699,21 @@ fun ChatItem(state: AppState,
                 fontWeight = FontWeight.Bold
             )
             AnimatedVisibility(chat.last?.time!=null && !userData.typing) {
-                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    Text( modifier = Modifier.width(200.dp),
+                Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()) {
+                    if(chat.last?.imgUrl!=""){
+                        Icon(modifier = Modifier.padding(end =3.dp),
+                            imageVector = Icons.Rounded.Image, contentDescription = null)
+                    }
+
+                    Text(modifier = Modifier.widthIn(max = 150.dp),
                         text = chat.last?.content.orEmpty(),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         color = Color.LightGray,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Light)
                     )
+                    Spacer(modifier = Modifier.weight(1f))
                     Text(
                         text = if(chat.last?.time.toString()!="null") formatter.format(chat.last?.time?.toDate()!!) else "",
                         color = Color.LightGray,

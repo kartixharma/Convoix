@@ -8,14 +8,10 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -25,14 +21,11 @@ import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,7 +33,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -57,17 +49,15 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieClipSpec
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieAnimatable
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.convoix.AppState
 import com.example.convoix.ChatViewModel
 import com.example.convoix.Dialogs.ProfileEditDialog
 import com.example.convoix.R
-import com.example.convoix.UserData
-import com.example.convoix.View
+import com.example.convoix.Firebase.UserData
+import com.example.convoix.Dialogs.View
 import java.io.ByteArrayOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -137,10 +127,12 @@ fun ProfileScreen(
             navController.popBackStack()
         }
     }
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+    Box(contentAlignment = Alignment.TopCenter) {
         Image(modifier = Modifier.fillMaxSize(),
-            painter = painterResource(id = if(isSystemInDarkTheme()) R.drawable.screen1 else R.drawable.screen),
-            contentDescription = null)
+            painter = painterResource(id = R.drawable.screen1 ),
+            contentDescription = null,
+            contentScale = ContentScale.Crop
+        )
         Row(modifier = Modifier.padding(horizontal = 15.dp)) {
             IconButton(modifier = Modifier.padding(top = 40.dp), onClick = { navController.popBackStack() }) {
                 Icon(imageVector = Icons.Filled.ArrowBackIosNew, contentDescription = null)
@@ -258,6 +250,7 @@ fun ProfileScreen(
             onClick = {
                 viewModel.updateStatus(false)
                 viewModel.removeL()
+                viewModel.removeFCMToken(user?.userId.toString())
                 onSignOut()
                       },
             modifier = Modifier

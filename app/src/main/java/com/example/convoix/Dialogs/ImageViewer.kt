@@ -30,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -41,8 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
-import com.example.convoix.ChatUserData
-import com.example.convoix.Message
+import com.example.convoix.Firebase.ChatUserData
+import com.example.convoix.Firebase.Message
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -51,13 +50,15 @@ fun ImageViewer(userData: ChatUserData, hideDialog:()->Unit, message: Message) {
     val formatter = remember {
         SimpleDateFormat(("hh:mm a"), Locale.getDefault())
     }
-    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-    }
     Dialog(onDismissRequest = hideDialog,
         properties = DialogProperties(
             usePlatformDefaultWidth = false
         )
     )       {
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.7f))) {
+        }
         var scale by remember {
             mutableStateOf(1f)
         }

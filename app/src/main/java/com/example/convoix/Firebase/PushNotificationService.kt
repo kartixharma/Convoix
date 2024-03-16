@@ -1,4 +1,4 @@
-package com.example.convoix
+package com.example.convoix.Firebase
 
 import android.content.Intent
 import android.os.IBinder

@@ -1,28 +1,35 @@
+@file:OptIn(ExperimentalToolkitApi::class)
+
 package com.example.convoix.screens
 
-import android.os.Build.VERSION.SDK_INT
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,136 +38,99 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import coil.ImageLoader
-import coil.compose.rememberAsyncImagePainter
-import coil.decode.GifDecoder
-import coil.decode.ImageDecoderDecoder
+import androidx.compose.ui.unit.sp
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.convoix.AppState
 import com.example.convoix.R
+import com.primex.core.ExperimentalToolkitApi
+import com.primex.core.blur.legacyBackgroundBlur
+import com.primex.core.noise
 
 @Composable
 fun SignInScreen(
     state: AppState,
     onSignInCLick:() -> Unit,
-    onValueChange:(String)->Unit,
-    onPassChange:(String)->Unit
-){
-    val context= LocalContext.current
-    LaunchedEffect(key1 = state.signInError){
-        state.signInError?.let { error ->
-            Toast.makeText(
-                context,
-                error,
-                Toast.LENGTH_SHORT).show()
-        }
+) {
+    val comp by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.done))
+    val brush = Brush.linearGradient(
+        listOf(
+            Color(0xFF238CDD),
+            Color(0xFF255DCC)
+        )
+    )
+    Column(modifier = Modifier)
+    {
+        Image(
+            modifier = Modifier
+                .fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            painter = painterResource(R.drawable.login),
+            contentDescription = null
+        )
     }
-    val imageLoader = ImageLoader.Builder(context)
-        .components {
-            if (SDK_INT >= 28) {
-                add(ImageDecoderDecoder.Factory())
-            } else {
-                add(GifDecoder.Factory())
-            }
-        }
-        .build()
-    var passwordVisbility by remember { mutableStateOf(false) }
-    Image(modifier = Modifier
-        .blur(15.dp)
-        .fillMaxWidth()
-        .scale(2.5f),
-        painter = painterResource(id = R.drawable.abstract_blur_color_background_vector_21457509),
-        contentDescription = null)
-    if(state.showAnim){
-        Column(modifier = Modifier.padding(top = 120.dp),
-            horizontalAlignment = Alignment.CenterHorizontally) {
+
+    Column(
+        modifier = Modifier.padding(bottom = 200.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (!state.showAnim) {
             Image(
-                painter = rememberAsyncImagePainter(R.drawable.animation___1706898281923, imageLoader),
-                contentDescription = null, Modifier.size(170.dp)
+                modifier = Modifier
+                    .size(200.dp),
+                painter = painterResource(R.drawable.oig3),
+                contentDescription = null
             )
         }
     }
-    else{
-        Column(modifier = Modifier.padding(top = 100.dp),
-            horizontalAlignment = Alignment.CenterHorizontally) {
-            Image(
-                painter = painterResource(id = R.drawable.login_user_name_1),
-                contentDescription = null, modifier = Modifier.size(130.dp), alpha = 0.7f)
+    Column(
+        modifier = Modifier.padding(bottom = 200.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        AnimatedVisibility(state.showAnim) {
+            LottieAnimation(modifier = Modifier.size(250.dp), composition = comp)
         }
     }
-    Column(modifier = Modifier
-        .fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Card(
-            modifier = Modifier
-                .padding(top = 300.dp, start = 30.dp, end = 30.dp),
-            border = BorderStroke(0.4.dp, Color.Gray),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(MaterialTheme.colorScheme.background.copy(alpha = 0.4f))
-        ) {
-            Column(modifier = Modifier
-                .padding(vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally) {
-                OutlinedTextField(label = { Text(text = "Email" )},
-                    value = state.email,
-                    onValueChange = {onValueChange(it)},
-                    shape = RoundedCornerShape(20.dp))
-                OutlinedTextField(label = { Text(text = "Password" )},
-                    value = state.pass,
-                    onValueChange = {onPassChange(it)},
-                    shape = RoundedCornerShape(20.dp),
-                    trailingIcon = {
-                        IconButton(onClick = {
-                            passwordVisbility = !passwordVisbility
-                        }) {
-                            Icon(
-                                imageVector = Icons.Filled.CheckCircle,
-                                contentDescription = "Visibility Icon"
-                            )
-                        }
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password
-                    ),
-                    visualTransformation = if (passwordVisbility) VisualTransformation.None
-                    else PasswordVisualTransformation()
+    Column(
+        modifier = Modifier.padding(top = 200.dp)
+            .fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+            Button(
+                onClick = onSignInCLick,
+                modifier = Modifier
+                    .background(brush, CircleShape)
+                    .fillMaxWidth(0.7f)
+                    .height(60.dp),
+                colors = ButtonDefaults.buttonColors(Color.Transparent),
+                shape = CircleShape
+            ) {
+                Text(
+                    modifier = Modifier.padding(end = 20.dp),
+                    text = "Continue with Google",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
-                Button(modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 30.dp, end = 30.dp)
-                    .height(50.dp),
-                    shape =  RoundedCornerShape(20.dp),
-                    onClick = onSignInCLick ) {
-                    Text(text = "Sign Up", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-        Text(text = "Or", modifier = Modifier.padding(10.dp),
-            color = MaterialTheme.colorScheme.background,
-            style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-        Button(modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 30.dp, end = 30.dp)
-            .height(50.dp),
-            shape =  RoundedCornerShape(20.dp),
-            onClick = onSignInCLick ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "Continue with Google", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                Image(painter = painterResource(id = R.drawable.goog_0ed88f7c), contentDescription = null, contentScale = ContentScale.Fit)
+                Image(modifier = Modifier.size(30.dp),
+                    painter = painterResource(id = R.drawable.goog_0ed88f7c),
+                    contentDescription = null,
+                )
             }
 
-        }
     }
-
 }

@@ -27,7 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.example.convoix.UserData
+import com.example.convoix.Firebase.UserData
 
 @Composable
 fun ProfileEditDialog(hideDialog: () ->Unit, saveProfile:(String, String)->Unit, user: UserData?){

@@ -7,6 +7,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.example.convoix.Firebase.ChatData
+import com.example.convoix.Firebase.ChatUserData
+import com.example.convoix.Firebase.Message
+import com.example.convoix.Firebase.Pref
+import com.example.convoix.Firebase.SignInResult
+import com.example.convoix.Firebase.Story
+import com.example.convoix.Firebase.UserData
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.Filter
@@ -29,7 +36,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONObject
 import java.io.IOException
-import java.time.LocalDateTime
 import java.util.Calendar
 
 
@@ -45,7 +51,6 @@ class ChatViewModel: ViewModel() {
     var tpListener: ListenerRegistration?=null
     val storage = FirebaseStorage.getInstance()
     var stories by mutableStateOf<List<Story>>(emptyList())
-    var myStory by mutableStateOf(Story())
     var list by mutableStateOf<List<UserData>>(emptyList())
     var chatListener: ListenerRegistration? = null
     var userDataListener: ListenerRegistration? = null
@@ -91,6 +96,7 @@ class ChatViewModel: ViewModel() {
                     }
                     users.add(otherUserId)
                 }
+                users.add(currentUserId)
                 storyListener = storyCol
                     .whereIn("userId", users)
                     .addSnapshotListener { storySnapshot, storyError ->
@@ -102,14 +108,6 @@ class ChatViewModel: ViewModel() {
                     }
             }
     }
-        storyCol
-            .where(Filter.equalTo("userId", currentUserId))
-            .addSnapshotListener { value, error ->
-                if(value!=null){
-                    myStory = value.documents.firstOrNull()?.toObject<Story>() ?: Story()
-                }
-
-            }
     }
 
     fun getTp(chatId: String) {
@@ -380,11 +378,11 @@ class ChatViewModel: ViewModel() {
         firestore.collection("stories").document(id).delete()
     }
     fun Reaction(str: String, chatId: String, msgId: String){
-        val reaction = Reaction (
-        ppurl = state.value.userData?.ppurl.toString(),
-        username = state.value.userData?.username.toString(),
-        userId = state.value.userData?.userId.toString(),
-        reaction = str
+        val reaction = com.example.convoix.Firebase.Reaction(
+            ppurl = state.value.userData?.ppurl.toString(),
+            username = state.value.userData?.username.toString(),
+            userId = state.value.userData?.userId.toString(),
+            reaction = str
         )
         firestore.collection("chats")
             .document(chatId)
@@ -484,6 +482,9 @@ class ChatViewModel: ViewModel() {
             }
         }
     }
+    fun removeFCMToken(userId: String){
+        firestore.collection("users").document(userId).update("token", "")
+    }
     fun sendNotification(msg: String){
         usersCollection.document(state.value.User2?.userId.toString()).get()
             .addOnSuccessListener { documentSnapshot ->
@@ -503,8 +504,6 @@ class ChatViewModel: ViewModel() {
                     println("Document does not exist")
                 }
             }
-
-
     }
     fun callApi(jsonObj: JSONObject) {
         val json = "application/json; charset=utf-8".toMediaType()
@@ -556,15 +555,11 @@ class ChatViewModel: ViewModel() {
         _state.update { AppState() }
         stories = emptyList()
         chats = emptyList()
-        myStory = Story()
     }
     fun removeL(){
         storyListener?.remove()
         chatListener?.remove()
         userDataListener?.remove()
-    }
-    fun showAnim(){
-        _state.update { it.copy( showAnim = true) }
     }
     fun showDialog(){
         _state.update { it.copy( showDialog=true) }
