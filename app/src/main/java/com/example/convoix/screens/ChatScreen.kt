@@ -478,7 +478,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                                         error = painterResource(id = R.drawable.person_placeholder_4),
                                         contentDescription = "Profile picture",
                                         contentScale = ContentScale.Crop,
-                                        modifier = Modifier.clip(CircleShape)
+                                        modifier = Modifier.clip(CircleShape).fillMaxSize()
                                     )
                                     Icon( modifier = Modifier
                                         .size(30.dp)
