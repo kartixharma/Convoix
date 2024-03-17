@@ -8,9 +8,9 @@ your streamlined chatting solution. Connect effortlessly and chat with ease. Try
 - Online status visibility
 - React with custom emojis
 - Edit bio, name, and profile picture
-- Send images with messages at once
+- Send images with messages
 - Copy messages
-- Delete multiple messages
+- Delete multiple messages at once
 - Adjust doodles, background, and font size
 - Search for specific users
 - Easy access to chats
