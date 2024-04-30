@@ -2,7 +2,28 @@
 
 your streamlined chatting solution. Connect effortlessly and chat with ease. Try it now!.
 
+![](https://imgur.com/kPV3sb0l.png)
+
 ## Features:
+- Scheduled messaging (new)
+- Cancel schedule (new)
+- Swipe to reply (new)
+- Change typing indicator animation (new)
+- Set chat screen background from storage (new)
+- Send Video and Files (new)
+- Upload Progress Indicator while sending any media/file (new)
+- Read receipts  (new)
+- Enable/Disable read receipts (new)
+- Enable/Disable online visibility (new)
+- Reply to story  (new)
+- React to story with custom reactions (new)
+- Story viewers (new)
+- Forward multiple messages to multiple users simultaneously (new)
+- Search messages and scroll through matches (new)
+- Send photos directly from the camera (new)
+- Unread messages indicator (new)
+- Crop, rotate, flip photos before sending (new)
+- Optional image compression toggle (new)
 - Real-time notifications
 - Typing status indicators
 - Online status visibility
@@ -14,11 +35,12 @@ your streamlined chatting solution. Connect effortlessly and chat with ease. Try
 - Adjust doodles, background, and font size
 - Search for specific users
 - Easy access to chats
-- Add or delete stories effortlessly
+- Add, view, or delete stories effortlessly
 - Multiple stories feature
 - Edit messages
 - Delete users and their chats
 - Block and unblock users
+
 ## Implementation Highlights:
 
 - #### Google sign-in using Firebase Authentication
@@ -26,8 +48,10 @@ your streamlined chatting solution. Connect effortlessly and chat with ease. Try
 - #### Firebase Firestore to store messages
 - #### Firebase Storage for media files
 - #### FCM Service and OkHttp for notifications
+- #### Android Alarm Manager
 - #### Lottiefiles Animation for delightful UX
 - #### Coil Library for efficient image loading
+- #### ExoPlayer to play videos
 - #### https://github.com/Abhimanyu14/compose-emoji-picker.git for emoji picker
 
 ## Screenshots:
