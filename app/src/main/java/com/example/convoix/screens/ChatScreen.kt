@@ -1,8 +1,7 @@
-@file:OptIn(ExperimentalToolkitApi::class)
-
 package com.example.convoix.screens
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
@@ -12,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -45,6 +46,10 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.InsertDriveFile
+import androidx.compose.material.icons.rounded.OndemandVideo
+import androidx.compose.material.icons.rounded.VideoCall
+import androidx.compose.material.icons.rounded.VideoFile
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
@@ -85,11 +90,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
@@ -110,11 +120,13 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Composable
-fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: AppState, showSingleChat: (ChatUserData, String) -> Unit){
-    val notLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()){
-
-    }
-    LaunchedEffect(key1 = true){
+fun ChatScreen(
+    navController: NavController,
+    viewModel: ChatViewModel,
+    state: AppState,
+    showSingleChat: (ChatUserData, String) -> Unit){
+    val notLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()){}
+    LaunchedEffect(key1 = true) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -181,8 +193,6 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                 Color(0xFF777777),
         )
     )
-
-
     val story = Brush.sweepGradient(
             listOf(
                 Color(0xFF78BEDA),
@@ -221,7 +231,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                 Icon(Icons.Filled.AddComment, contentDescription = "ADD", tint = Color.White)
             }
         }
-    ){it->
+    ){ it ->
         Image(
             painter = painterResource(id = R.drawable.blck_blurry),
             contentDescription = "",
@@ -240,6 +250,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
         AnimatedVisibility(showStory) {
             StoryDialog(
                 state,
+                viewModel,
                 story = curStory,
                 hideDialog = { showStory = !showStory
                     selectedItem.clear() },
@@ -250,10 +261,13 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                 CustomDialogBox(
                     state = state,
                     hideDialog = {viewModel.hideDialog()},
-                    addChat = { viewModel.addChat(state.srEmail)
+                    addChat = {
+                        viewModel.addChat(state.srEmail)
                         viewModel.hideDialog()
                         viewModel.setSrEmail("")} ,
-                    setEmail = {viewModel.setSrEmail(it)}
+                    setEmail = {
+                        viewModel.setSrEmail(it)
+                    }
                 )
         }
         imgUri?.let {
@@ -261,9 +275,9 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                 val src = ImageDecoder.createSource(LocalContext.current.contentResolver,it)
                 bitmap = ImageDecoder.decodeBitmap(src)
             }
-            StoryPreview(bitmap = bitmap, hideDialog = { imgUri=null }, upload = {
+            StoryPreview(uri = imgUri, hideDialog = { imgUri=null }, upload = { cUri->
                 isUploading = true
-                viewModel.UploadImage1(imgUri!!){
+                viewModel.UploadImage1(if(cUri!=null) cUri else imgUri!!){
                     viewModel.uploadStory(it, myStory[0].id)
                     isUploading = false
                 }
@@ -271,7 +285,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
             })
             }
         Column(modifier = Modifier
-            .padding(top = 36.dp)) {//.background(colorScheme.primaryContainer)
+            .padding(top = 36.dp)) {
             Box {
                 this@Column.AnimatedVisibility(
                     selectionMode,
@@ -283,7 +297,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                         horizontalArrangement = Arrangement.Center,
                         modifier = Modifier.fillMaxWidth(0.95f)
                     ) {
-                        IconButton(modifier = Modifier.padding(5.dp),
+                        IconButton(modifier = Modifier,
                             onClick = {
                                 selectionMode = false
                                 selectedItem.clear()
@@ -308,7 +322,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                 this@Column.AnimatedVisibility(
                     showSearch,
                     enter = slideInVertically(),
-                    exit = slideOutVertically()
+                    exit = slideOutVertically().plus(fadeOut())
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -357,9 +371,11 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                     ) {
                         Column {
                             Text(
-                                text = "Hello",
-                                modifier = Modifier.padding(start = 16.dp),
-                                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 20.sp)
+                                text = "Hello,",
+                                modifier = Modifier
+                                    .padding(start = 16.dp)
+                                    .offset(y = 5.dp),
+                                style = MaterialTheme.typography.titleSmall
                             )
                             Text(
                                 text = state.userData?.username.toString(),
@@ -427,47 +443,64 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                 }
             }
             AnimatedVisibility(!showSearch){
-                LazyRow {
+                LazyRow(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.padding(start = 10.dp, top = 10.dp)
+
+                ) {
                     item {
                         if(isUploading){
-                            Box(
-                                modifier = Modifier
-                                    .clickable {
-                                        curStory = myStory[0]
-                                        showStory = true
-                                    }
-                                    .padding(horizontal = 6.dp, vertical = 5.dp)
-                                    .size(90.dp)
-                                    .padding(7.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
-                                        .data(state.userData?.ppurl)
-                                        .crossfade(true)
-                                        .allowHardware(false)
-                                        .build(),
-                                    placeholder = painterResource(id = R.drawable.person_placeholder_4),
-                                    error = painterResource(id = R.drawable.person_placeholder_4),
-                                    contentDescription = "Profile picture",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.clip(CircleShape)
+                            Column(verticalArrangement = Arrangement.spacedBy(5.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(77.dp)
+                                        .padding(3.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    AsyncImage (
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(state.userData?.ppurl)
+                                            .crossfade(true)
+                                            .allowHardware(false)
+                                            .build(),
+                                        placeholder = painterResource(id = R.drawable.person_placeholder_4),
+                                        error = painterResource(id = R.drawable.person_placeholder_4),
+                                        contentDescription = "Profile picture",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .clip(CircleShape)
+                                            .fillMaxSize()
+                                    )
+                                    LottieAnimation(modifier = Modifier
+                                        .background(Color.Black.copy(alpha = 0.5f), CircleShape),
+                                        composition = comp,
+                                        iterations = LottieConstants.IterateForever
+                                    )
+                                }
+                                Text(
+                                    text = "Uploading..",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Light,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center
                                 )
-                                LottieAnimation(composition = comp, iterations = LottieConstants.IterateForever)
                             }
                         }
                         if(myStory[0].userId.length>0 && !isUploading){
-                            Box(
-                                modifier = Modifier
-                                    .clickable {
-                                        curStory = myStory[0]
-                                        showStory = true
-                                    }
-                                    .padding(horizontal = 6.dp, vertical = 5.dp)
-                                    .size(90.dp)
-                                    .padding(7.dp),
-                                contentAlignment = Alignment.BottomEnd
-                            ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(5.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(
+                                    modifier = Modifier
+                                        .clickable {
+                                            curStory = myStory[0]
+                                            showStory = true
+                                        }
+                                        .size(77.dp)
+                                        .padding(3.dp),
+                                    contentAlignment = Alignment.BottomEnd
+                                ) {
                                     AsyncImage(
                                         model = ImageRequest.Builder(LocalContext.current)
                                             .data(myStory[0].ppurl)
@@ -478,29 +511,41 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                                         error = painterResource(id = R.drawable.person_placeholder_4),
                                         contentDescription = "Profile picture",
                                         contentScale = ContentScale.Crop,
-                                        modifier = Modifier.clip(CircleShape).fillMaxSize()
+                                        modifier = Modifier
+                                            .clip(CircleShape)
+                                            .fillMaxSize()
                                     )
-                                    Icon( modifier = Modifier
-                                        .size(30.dp)
-                                        .clickable {
-                                            launcher.launch("image/*")
-                                        },
-                                        imageVector = Icons.Filled.AddCircle, contentDescription = null)
+                                    Icon(
+                                        modifier = Modifier
+                                            .size(30.dp)
+                                            .clickable {
+                                                launcher.launch("image/*")
+                                            },
+                                        imageVector = Icons.Filled.AddCircle,
+                                        contentDescription = null
+                                    )
+                                }
+                                Text(
+                                    text = "My story",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Light,
+                                    textAlign = TextAlign.Center
+                                )
                             }
                         }
                         if(myStory[0].userId.length==0 && !isUploading){
                             Box(modifier = Modifier
-                                .padding(vertical = 15.dp, horizontal = 10.dp)
+                                .padding(bottom = 20.dp, start = 5.dp, end = 5.dp)
                                 .size(70.dp)
                                 .drawWithCache {
                                     onDrawBehind {
                                         drawCircle(
                                             brush = border,
                                             style = Stroke(
-                                                width = 6f,
+                                                width = 8f,
                                                 pathEffect = PathEffect.dashPathEffect(
                                                     floatArrayOf(
-                                                        85f,
+                                                        (35.dp.toPx() * 2 * Math.PI.toFloat() / 5) - 15f,
                                                         15f
                                                     ), 0f
                                                 )
@@ -518,41 +563,58 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                                 Icon(modifier = Modifier.size(40.dp),
                                     imageVector = Icons.Rounded.Add,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
+                                    tint = colorScheme.onBackground.copy(alpha = 0.8f)
                                 )
                             }
                         }
                     }
                     items(stories){
-                        Box(
-                            modifier = Modifier
-                                .clickable {
-                                    curStory = it
-                                    showStory = true
-                                    viewModel.viewStory(it.id)
-                                }
-                                .padding(horizontal = 6.dp, vertical = 10.dp)
-                                .size(80.dp)
-                                .shadow(1.dp, CircleShape)
-                                .border(
-                                    if (it.viewedBy.contains(state.userData?.userId)) 2.dp else 3.dp,
-                                    if (it.viewedBy.contains(state.userData?.userId)) border1 else story,
-                                    CircleShape
-                                )
-                                .padding(7.dp),
-                            contentAlignment = Alignment.Center
+                        Column(verticalArrangement = Arrangement.spacedBy(5.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(it.ppurl)
-                                    .crossfade(true)
-                                    .allowHardware(false)
-                                    .build(),
-                                placeholder = painterResource(id = R.drawable.person_placeholder_4),
-                                error = painterResource(id = R.drawable.person_placeholder_4),
-                                contentDescription = "Profile picture",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.clip(CircleShape)
+                            Box(
+                                modifier = Modifier
+                                    .clickable {
+                                        curStory = it
+                                        showStory = true
+                                        if (!it.images[0].viewedBy.any { it.userId == state.userData?.userId }) viewModel.viewStory(
+                                            it.id,
+                                            0
+                                        )
+                                    }
+                                    .size(80.dp)
+                                    .shadow(1.dp, CircleShape)
+                                    .border(
+                                        if (it.images.all { it.viewedBy.any { it.userId == state.userData?.userId } }) 2.dp else 3.dp,
+                                        if (it.images.all { it.viewedBy.any { it.userId == state.userData?.userId } }) border1 else story,
+                                        CircleShape
+                                    )
+                                    .padding(7.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(it.ppurl)
+                                        .crossfade(true)
+                                        .allowHardware(false)
+                                        .build(),
+                                    placeholder = painterResource(id = R.drawable.person_placeholder_4),
+                                    error = painterResource(id = R.drawable.person_placeholder_4),
+                                    contentDescription = "Profile picture",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .fillMaxSize()
+                                )
+                            }
+                            Text(
+                                modifier = Modifier.width(70.dp),
+                                text = it.username.toString(),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Light,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center
                             )
                         }
                     }
@@ -570,7 +632,7 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel, state: Ap
                     Text(
                         text = "Chats",
                         modifier = Modifier.padding(16.dp, 16.dp, 16.dp),
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Normal
                     )
                 }
@@ -623,7 +685,7 @@ fun ChatItem(state: AppState,
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if(!userData.status){
+        if(!userData.status) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(userData.ppurl)
@@ -693,20 +755,46 @@ fun ChatItem(state: AppState,
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = if(userData.userId==state.userData?.userId) userData.username.orEmpty() + " (You)" else userData.username.orEmpty(),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+            Row(horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(0.95f)) {
+                Text(modifier = Modifier.width(150.dp),
+                    text = if(userData.userId==state.userData?.userId) userData.username.orEmpty() + " (You)" else userData.username.orEmpty(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text (
+                    text = if(chat.last?.time!=null) formatter.format(chat.last.time.toDate()!!) else "",
+                    color = if(userData.unread>0) Color(0xFF6CAFFF) else Color.LightGray,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Light)
+                )
+            }
             AnimatedVisibility(chat.last?.time!=null && !userData.typing) {
                 Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()) {
-                    if(chat.last?.imgUrl!=""){
+                    if(chat.last?.senderId==state.userData?.userId) {
+                        Icon(modifier = Modifier.padding(end = 5.dp).size(10.dp),
+                            painter = painterResource(id = R.drawable.check_mark),
+                            contentDescription = null,
+                            tint = if(chat.last?.read?:false) Color(0xFF13C70D) else Color.White
+                        )
+                    }
+                    if(chat.last?.imgUrl!="") {
                         Icon(modifier = Modifier.padding(end =3.dp),
                             imageVector = Icons.Rounded.Image, contentDescription = null)
                     }
-
-                    Text(modifier = Modifier.widthIn(max = 150.dp),
+                    if(chat.last?.vidUrl!="") {
+                        Icon(modifier = Modifier.padding(end =3.dp),
+                            imageVector = Icons.Rounded.VideoFile, contentDescription = null)
+                    }
+                    if(chat.last?.fileUrl!="") {
+                        Icon(modifier = Modifier.padding(end =3.dp),
+                            imageVector = Icons.Rounded.InsertDriveFile, contentDescription = null)
+                    }
+                    Text(
+                        modifier = Modifier.widthIn(max = 180.dp),
                         text = chat.last?.content.orEmpty(),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -714,11 +802,22 @@ fun ChatItem(state: AppState,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Light)
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    Text(
-                        text = if(chat.last?.time.toString()!="null") formatter.format(chat.last?.time?.toDate()!!) else "",
-                        color = Color.LightGray,
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Light)
-                    )
+                    if(userData.unread>0) {
+                        Box(modifier = Modifier.padding(end = 32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .background(Color(0xFF1462C0), shape = CircleShape)
+                            )
+                            Text(
+                                text = userData.unread.toString(),
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                        }
+                    }
                 }
             }
             if(userData.typing){

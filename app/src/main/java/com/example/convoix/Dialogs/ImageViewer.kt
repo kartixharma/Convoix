@@ -124,7 +124,7 @@ fun ImageViewer(userData: ChatUserData, hideDialog:()->Unit, message: Message) {
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = formatter.format(message.time?.toDate()!!),
+                            text = if(message.time!=null) formatter.format(message.time.toDate()) else "",
                             color = Color.LightGray,
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Light)
                         )

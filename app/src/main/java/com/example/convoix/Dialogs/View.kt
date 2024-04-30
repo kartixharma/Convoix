@@ -22,7 +22,7 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 
 @Composable
-fun View(imageUrl: String, hideDialog: () ->Unit){
+fun View(imageUrl: String, hideDialog: () ->Unit) {
     Column(modifier = Modifier
         .fillMaxSize()
         .blur(15.dp)){

@@ -1,21 +1,35 @@
 package com.example.convoix
 
 import android.content.ContentValues
+import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.core.content.FileProvider
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.convoix.Firebase.ChatData
 import com.example.convoix.Firebase.ChatUserData
 import com.example.convoix.Firebase.Image
 import com.example.convoix.Firebase.Message
 import com.example.convoix.Firebase.Pref
+import com.example.convoix.Firebase.ScheduledMsg
 import com.example.convoix.Firebase.SignInResult
 import com.example.convoix.Firebase.Story
+import com.example.convoix.Firebase.StoryViewer
 import com.example.convoix.Firebase.UserData
+import com.google.common.primitives.Bytes
 import com.google.firebase.Timestamp
+import com.google.firebase.appcheck.internal.util.Logger.TAG
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.Filter
 import com.google.firebase.firestore.FirebaseFirestore
@@ -24,10 +38,14 @@ import com.google.firebase.firestore.toObject
 import com.google.firebase.firestore.toObjects
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
@@ -36,7 +54,9 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONObject
+import java.io.File
 import java.io.IOException
+import java.time.LocalDateTime
 import java.util.Calendar
 
 
@@ -56,7 +76,41 @@ class ChatViewModel: ViewModel() {
     var chatListener: ListenerRegistration? = null
     var userDataListener: ListenerRegistration? = null
     var storyListener: ListenerRegistration? = null
-    fun onSignInResult(result: SignInResult){
+    var forwardMsgs by mutableStateOf(mutableStateListOf<Message>())
+    var timePicker by mutableStateOf(false)
+    var datePicker by mutableStateOf(false)
+    var showSearch by mutableStateOf(false)
+    var reply by mutableStateOf("")
+    var editMsgId by mutableStateOf("")
+    var replyMessage by mutableStateOf(Message())
+    var editMsgContent by mutableStateOf("")
+    var imgUri by mutableStateOf<Uri?>(null)
+    var vidUri by mutableStateOf<Uri?>(null)
+    var fileUri by mutableStateOf<Uri?>(null)
+    var showOptions by mutableStateOf(false)
+    var bitmap by mutableStateOf<Bitmap?>(null)
+    var selectionMode by mutableStateOf(false)
+    var showDialog by mutableStateOf(false)
+    var clearChatDialog by mutableStateOf(false)
+    var msg by mutableStateOf(Message())
+    val brush = Brush.linearGradient(listOf(
+        Color(0xFF238CDD),
+        Color(0xFF1952C4)
+    ))
+    var isModalBottomSheetVisible by mutableStateOf(false)
+    var selectedEmoji by mutableStateOf("")
+    var searchText by mutableStateOf("")
+    var searchText1 by mutableStateOf("")
+    companion object {
+        private var instance: ChatViewModel? = null
+        fun getInstance(): ChatViewModel {
+            if (instance == null) {
+                instance = ChatViewModel()
+            }
+            return instance!!
+        }
+    }
+    fun onSignInResult(result: SignInResult) {
         _state.update {
             it.copy(
                 isSignedIn = result.data != null,
@@ -71,8 +125,9 @@ class ChatViewModel: ViewModel() {
         )
         if(storyId.isNotBlank()){
             firestore.collection("stories").document(storyId).update("images", FieldValue.arrayUnion(image))
+
         }
-        else{
+        else {
             val id = firestore.collection("stories").document().id
             val story = Story(
                 id = id,
@@ -84,46 +139,87 @@ class ChatViewModel: ViewModel() {
             firestore.collection("stories").document(id).set(story)
         }
     }
-    fun viewStory(id: String){
-        firestore.collection("stories").document(id).update("viewedBy", FieldValue.arrayUnion(state.value.userData?.userId))
-    }
-    fun popStory(currentUserId: String) {
-        val storyCol = firestore.collection("stories")
-        val users = arrayListOf(state.value.userData?.userId)
-        firestore.collection("chats").where(
-            Filter.or(
-                Filter.equalTo("user1.userId", currentUserId),
-                Filter.equalTo("user2.userId", currentUserId)
-            )
-        ).addSnapshotListener { chatSnapshot, chatError ->
-            if (chatSnapshot != null) {
-                chatSnapshot.toObjects<ChatData>().forEach { chat ->
-                    val otherUserId = if (chat.user1?.userId == currentUserId) {
-                        chat.user2?.userId.toString()
-                    } else {
-                        chat.user1?.userId.toString()
-                    }
-                    users.add(otherUserId)
+    fun viewStory(id: String, index: Int) {
+        firestore.collection("stories").document(id).get()
+            .addOnSuccessListener {
+                val existingImages = it.toObject<Story>()?.images ?: emptyList()
+                val imageAtIndex = existingImages[index]
+                val viewedImage = imageAtIndex.copy(viewedBy =
+                if (imageAtIndex.viewedBy.any { it.userId== state.value.userData?.userId.toString() }){
+                    imageAtIndex.viewedBy
                 }
-                users.add(currentUserId)
-                storyListener = storyCol
-                    .whereIn("userId", users)
-                    .addSnapshotListener { storySnapshot, storyError ->
-                        if (storySnapshot != null) {
-                            stories = storySnapshot.documents.mapNotNull { document ->
-                                document.toObject<Story>()
-                            }
-                        }
-                    }
+                    else {
+                    imageAtIndex.viewedBy.plusElement(
+                        StoryViewer(
+                            ppurl = state.value.userData?.ppurl.toString(),
+                            username = state.value.userData?.username.toString(),
+                            userId = state.value.userData?.userId.toString(),
+                            time = Timestamp(Calendar.getInstance().time)
+                        )
+                    )
+                }
+                    )
+                val updatedImages = existingImages.map {
+                    if (it == imageAtIndex) viewedImage else it
+                }
+                firestore.collection("stories").document(id).update("images", updatedImages)
             }
     }
+    fun storyReaction(id: String, index: Int, reaction: String, userId: String) {
+        firestore.collection("stories").document(id).get()
+            .addOnSuccessListener {
+                val existingImages = it.toObject<Story>()?.images ?: emptyList()
+                val imageAtIndex = existingImages[index]
+                val viewedByUpdated = imageAtIndex.viewedBy.find { it.userId == state.value.userData?.userId.toString() }!!.copy(reaction = reaction)
+                val reactedImage = imageAtIndex.copy(viewedBy = imageAtIndex.viewedBy.filter { it.userId!=state.value.userData?.userId.toString() }.plusElement(viewedByUpdated) )
+                val updatedImages = existingImages.map {
+                    if (it == imageAtIndex) reactedImage else it
+                }
+                firestore.collection("stories").document(id).update("images", updatedImages)
+            }
+        sendNotification("Reacted "+reaction+" to your story", userId)
     }
+    fun popStory(currentUserId: String) {
+        viewModelScope.launch {
+            val storyCol = firestore.collection("stories")
+            val users = arrayListOf(state.value.userData?.userId)
+            firestore.collection("chats").where(
+                Filter.or(
+                    Filter.equalTo("user1.userId", currentUserId),
+                    Filter.equalTo("user2.userId", currentUserId)
+                )
+            ).addSnapshotListener { chatSnapshot, chatError ->
+                if (chatSnapshot != null) {
+                    chatSnapshot.toObjects<ChatData>().forEach { chat ->
+                        val otherUserId = if (chat.user1?.userId == currentUserId) {
+                            chat.user2?.userId.toString()
+                        } else {
+                            chat.user1?.userId.toString()
+                        }
+                        users.add(otherUserId)
+                    }
+                    users.add(currentUserId)
+                    storyListener = storyCol
+                        .whereIn("userId", users)
+                        .addSnapshotListener { storySnapshot, storyError ->
+                            if (storySnapshot != null) {
+                                stories = storySnapshot.documents.mapNotNull { document ->
+                                    document.toObject<Story>()
+                                }
+                            }
+                        }
+                }
+            }
+        }
 
+    }
     fun getTp(chatId: String) {
         tpListener?.remove()
-        tpListener = firestore.collection("chats").document(chatId).addSnapshotListener { snp, err->
-            if (snp != null) {
-                tp = snp.toObject(ChatData::class.java)!!
+        viewModelScope.launch(Dispatchers.IO) {
+            tpListener = firestore.collection("chats").document(chatId).addSnapshotListener { snp, err->
+                if (snp != null) {
+                    tp = snp.toObject(ChatData::class.java)!!
+                }
             }
         }
     }
@@ -132,42 +228,124 @@ class ChatViewModel: ViewModel() {
     }
     fun popMessage(chatId: String) {
         msgListener?.remove()
-        msgListener = firestore.collection("chats").document(chatId).collection("message")
-            .addSnapshotListener { value, error ->
-                if (value!=null){
-                    messages = value.documents.mapNotNull {
-                        it.toObject(Message::class.java)
-                    }.sortedBy { it.time }.reversed()
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                if (chatId != "") {
+                    msgListener = firestore.collection("chats").document(chatId).collection("message")
+                        .addSnapshotListener { value, error ->
+                            if (value != null) {
+                                messages = value.documents.mapNotNull {
+                                    it.toObject(Message::class.java)
+                                }.sortedBy { it.time }.reversed()
+                            }
+                        }
+                }
             }
         }
     }
-
     fun dePopMsg(){
         messages = listOf()
         msgListener?.remove()
     }
 
-    fun showChats(userId: String){
-        chatListener = firestore.collection("chats").where(
-            Filter.or(
-                Filter.equalTo("user1.userId", userId),
-                Filter.equalTo("user2.userId", userId)
-            )
-        ).addSnapshotListener{ value, err ->
-            if(value!=null){
+    fun showChats(userId: String) {
+            chatListener = firestore.collection("chats").where(
+                Filter.or(
+                    Filter.equalTo("user1.userId", userId),
+                    Filter.equalTo("user2.userId", userId)
+                )
+            ).addSnapshotListener { value, err ->
+                if(value!=null){
                     chats = value.documents.mapNotNull {
                         it.toObject<ChatData>()
                     }.sortedBy { it.last?.time }.reversed()
                 }
-        }
-
+            }
     }
-    fun UploadImage(img: ByteArray, callback: (String) -> Unit) {
+    fun findChatId(user2Id: String, callback: (String) -> Unit) {
+        firestore.collection("chats").where(
+            Filter.and(
+            Filter.or(
+                Filter.equalTo("user1.userId", state.value.userData?.userId),
+                Filter.equalTo("user2.userId", state.value.userData?.userId)
+            ),
+                Filter.or(
+                    Filter.equalTo("user1.userId", user2Id),
+                    Filter.equalTo("user2.userId", user2Id)
+                )
+        )).get().addOnSuccessListener { querySnapshot ->
+            if (!querySnapshot.isEmpty) {
+                val document = querySnapshot.documents.first()
+                val chatId = document.getString("chatId")
+                callback(chatId.toString())
+            }
+        }
+    }
+    fun UploadImage(img: ByteArray = ByteArray(0), msgId: String = "", chatId: String = "", imgUri: Uri = Uri.EMPTY, callback: (String) -> Unit) {
         val storageRef = storage.reference
         val imageRef = storageRef.child("images/${System.currentTimeMillis()}")
-        imageRef.putBytes(img)
+        if (imgUri.path != "") {
+            imageRef.putFile(imgUri)
+                .addOnSuccessListener {
+                    imageRef.downloadUrl
+                        .addOnSuccessListener { downloadUri ->
+                            val url = downloadUri.toString()
+                            callback(url)
+                        }
+                        .addOnFailureListener {
+                            callback("")
+                        }
+                }
+                .addOnProgressListener {
+                    if (msgId != "" && it.totalByteCount / (1024 * 1024) > 0) {
+                        updateProgress(
+                            chatId,
+                            msgId,
+                            (it.bytesTransferred / (1024 * 1024)).toString() + " MB / " + (it.totalByteCount / (1024 * 1024)).toString() + " MB"
+                        )
+                    } else if (msgId != "") {
+                        updateProgress(
+                            chatId,
+                            msgId,
+                            (it.bytesTransferred / (1024)).toString() + " KB / " + (it.totalByteCount / (1024)).toString() + " KB"
+                        )
+                    }
+                }
+        } else {
+            imageRef.putBytes(img)
+                .addOnSuccessListener {
+                    imageRef.downloadUrl
+                        .addOnSuccessListener { downloadUri ->
+                            val url = downloadUri.toString()
+                            callback(url)
+                        }
+                        .addOnFailureListener {
+                            callback("")
+                        }
+                }
+                .addOnProgressListener {
+                    if (msgId != "" && it.totalByteCount / (1024 * 1024) > 0) {
+                        updateProgress(
+                            chatId,
+                            msgId,
+                            (it.bytesTransferred / (1024 * 1024)).toString() + " MB / " + (it.totalByteCount / (1024 * 1024)).toString() + " MB"
+                        )
+                    } else if (msgId != "") {
+                        updateProgress(
+                            chatId,
+                            msgId,
+                            (it.bytesTransferred / (1024)).toString() + " KB / " + (it.totalByteCount / (1024)).toString() + " KB"
+                        )
+                    }
+                }
+        }
+    }
+    fun uploadVideo(msgId: String = "", chatId: String = "", vidUri: Uri, callback: (String) -> Unit) {
+        val storageRef = storage.reference
+        val videoRef = storageRef.child("videos/${System.currentTimeMillis()}")
+        videoRef.putFile(vidUri)
             .addOnSuccessListener {
-                imageRef.downloadUrl
+                videoRef.downloadUrl
                     .addOnSuccessListener { downloadUri ->
                         val url = downloadUri.toString()
                         callback(url)
@@ -176,11 +354,58 @@ class ChatViewModel: ViewModel() {
                         callback("")
                     }
             }
-            .addOnFailureListener {
-                callback("")
+            .addOnProgressListener {
+                if (msgId != "" && it.totalByteCount / (1024 * 1024) > 0) {
+                    updateProgress(
+                        chatId,
+                        msgId,
+                        (it.bytesTransferred / (1024 * 1024)).toString() + " MB / " + (it.totalByteCount / (1024 * 1024)).toString() + " MB"
+                    )
+                } else if (msgId != "") {
+                    updateProgress(
+                        chatId,
+                        msgId,
+                        (it.bytesTransferred / (1024)).toString() + " KB / " + (it.totalByteCount / (1024)).toString() + " KB"
+                    )
+                }
             }
-            .addOnCompleteListener {
+    }
+    fun uploadFile(msgId: String = "", chatId: String = "", fileUri: Uri, callback: (String) -> Unit) {
+        val storageRef = storage.reference
+        val fileRef = storageRef.child("files/${System.currentTimeMillis()}")
+        fileRef.putFile(fileUri)
+            .addOnSuccessListener {
+                fileRef.downloadUrl
+                    .addOnSuccessListener { downloadUri ->
+                        val url = downloadUri.toString()
+                        callback(url)
+                    }
+                    .addOnFailureListener {
+                        callback("")
+                    }
             }
+            .addOnProgressListener {
+                if (msgId != "" && it.totalByteCount / (1024 * 1024) > 0) {
+                    updateProgress(
+                        chatId,
+                        msgId,
+                        (it.bytesTransferred / (1024 * 1024)).toString() + " MB / " + (it.totalByteCount / (1024 * 1024)).toString() + " MB"
+                    )
+                } else if (msgId != "") {
+                    updateProgress(
+                        chatId,
+                        msgId,
+                        (it.bytesTransferred / (1024)).toString() + " KB / " + (it.totalByteCount / (1024)).toString() + " KB"
+                    )
+                }
+            }
+    }
+    fun updateProgress(
+        chatId: String,
+        msgId: String,
+        process: String
+    ){
+        firestore.collection("chats").document(chatId).collection("message").document(msgId).update("progress", process)
     }
     fun UploadImage1(img: Uri, callback: (String) -> Unit) {
         val storageRef = storage.reference
@@ -202,15 +427,29 @@ class ChatViewModel: ViewModel() {
             .addOnCompleteListener {
             }
     }
-
-
-    fun sendReply(chatId: String, msg: String, imgUrl: String =""){
+    fun sendReply(chatId: String,
+                  msg: String,
+                  imgUrl: String = "",
+                  vidUrl: String = "",
+                  replyMsg: Message = Message(),
+                  fileUrl: String = "",
+                  fileName: String = "",
+                  fileSize: String = "",
+                  senderId: String = state.value.userData?.userId.toString(),
+                  imgUri: String = ""
+    ): String {
         val id = firestore.collection("chats").document().collection("message").document().id
         val time = Calendar.getInstance().time
         val message = Message(
             msgId = id,
             imgUrl = imgUrl,
-            senderId = state.value.userData?.userId.toString(),
+            imgUri = imgUri,
+            vidUrl = vidUrl,
+            repliedMsg = replyMsg,
+            fileUrl = fileUrl,
+            fileName = fileName,
+            fileSize = fileSize,
+            senderId = senderId,
             content = msg,
             time = Timestamp(time)
         )
@@ -222,9 +461,75 @@ class ChatViewModel: ViewModel() {
             .addOnFailureListener { e ->
                 Log.e("Firestore Update", "Error updating last message", e)
             }
-        sendNotification(msg)
-    }
+        firestore.collection("chats").document(chatId).get()
+            .addOnSuccessListener { querySnapshot ->
+                    val user1Id = querySnapshot.getString("user1.userId")
+                    val user2Id = querySnapshot.getString("user2.userId")
 
+                    if (user1Id == senderId) {
+                        querySnapshot.reference.update("user1.unread", FieldValue.increment(1))
+                    }
+                    if (user2Id == senderId) {
+                        querySnapshot.reference.update("user2.unread", FieldValue.increment(1))                    }
+
+            }
+        if(imgUrl!="uploadingImage" && vidUrl!="uploadingVideo")
+            sendNotification(msg)
+        return id
+    }
+    fun addUrl(
+        vidUrl: String = "",
+        imgUrl: String = "",
+        fileUrl: String = "",
+        chatId: String,
+        msgId: String
+    ){
+        if(fileUrl!=""){
+            firestore.collection("chats").document(chatId)
+                .collection("message").document(msgId).update("fileUrl", fileUrl)
+            sendNotification("sent a File")
+        }
+        if(vidUrl!=""){
+            firestore.collection("chats").document(chatId)
+                .collection("message").document(msgId).update("vidUrl", vidUrl)
+            sendNotification("sent a Video")
+        }else{
+            firestore.collection("chats").document(chatId)
+                .collection("message").document(msgId).update("imgUrl",imgUrl)
+            sendNotification("sent an Image")
+        }
+    }
+    fun forwardMsg(chatIds: List<String>, senderId: String = state.value.userData?.userId.toString()){
+            for(chatId in chatIds){
+                for(msg in forwardMsgs){
+                    val id = firestore.collection("chats").document().collection("message").document().id
+                    val time = Calendar.getInstance().time
+                    val message = msg.copy(time = Timestamp(time), forwarded = true, msgId = id, senderId = senderId)
+                    firestore.collection("chats").document(chatId).collection("message").document(id).set(message)
+                    firestore.collection("chats").document(chatId).update("last", message)
+                        .addOnSuccessListener {
+                            Log.d("Firestore Update", "Last message updated successfully")
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("Firestore Update", "Error updating last message", e)
+                        }
+                    firestore.collection("chats").document(chatId).get()
+                        .addOnSuccessListener { querySnapshot ->
+                            val user1Id = querySnapshot.getString("user1.userId")
+                            val user2Id = querySnapshot.getString("user2.userId")
+
+                            if (user1Id == senderId) {
+                                querySnapshot.reference.update("user1.unread", FieldValue.increment(1))
+                            }
+                            if (user2Id == senderId) {
+                                querySnapshot.reference.update("user2.unread", FieldValue.increment(1))                    }
+
+                        }
+                    sendNotification("*Forwarded*\n"+ message.content)
+                }
+            }
+        forwardMsgs.clear()
+    }
     fun addChat(email: String){
         firestore.collection("chats").where(Filter.or(
             Filter.and(
@@ -338,8 +643,34 @@ class ChatViewModel: ViewModel() {
         val userDocument = usersCollection.document(userData.userId)
         userDocument.update("pref", pref)
     }
+    fun addScheduledMsg(scheduledMsg: ScheduledMsg) {
+        usersCollection.document(state.value.userData?.userId.toString())
+            .update("scheduledMsgs", FieldValue.arrayUnion(scheduledMsg))
+    }
+    fun cancelScheduledMsg(chatId: String, content: String, userId: String = state.value.userData?.userId.toString()) {
+        usersCollection.document(userId)
+            .get()
+            .addOnSuccessListener { documentSnapshot ->
+                val scheduledMsgs = documentSnapshot.get("scheduledMsgs") as? List<HashMap<String, Any>>?
+                if (scheduledMsgs != null && scheduledMsgs.isNotEmpty()) {
+                    val indexToRemove = scheduledMsgs.indexOfFirst { msg ->
+                        msg["chatId"] == chatId && msg["content"] == content
+                    }
+                    if (indexToRemove != -1) {
+                        val updatedScheduledMsgs = scheduledMsgs.toMutableList()
+                        updatedScheduledMsgs.removeAt(indexToRemove)
+                        usersCollection.document(userId)
+                            .update("scheduledMsgs", updatedScheduledMsgs)
+                    } else {
+                        Log.d(TAG, "No matching scheduled message found")
+                    }
+                } else {
+                    Log.d(TAG, "No scheduled messages found for user $userId")
+                }
+            }
+    }
 
-   fun getUserData(userId: String){
+    fun getUserData(userId: String){
         userDataListener = usersCollection.document(userId).addSnapshotListener { value, error ->
             if(value!=null){
                 _state.update { it.copy(userData = value.toObject(UserData::class.java)) }
@@ -394,7 +725,7 @@ class ChatViewModel: ViewModel() {
         }
     }
 
-    fun Reaction(str: String, chatId: String, msgId: String){
+    fun Reaction(str: String, chatId: String, msgId: String) {
         val reaction = com.example.convoix.Firebase.Reaction(
             ppurl = state.value.userData?.ppurl.toString(),
             username = state.value.userData?.username.toString(),
@@ -409,6 +740,7 @@ class ChatViewModel: ViewModel() {
                 if (existingUserReaction == null) {
                     firestore.collection("chats").document(chatId).collection("message").document(msgId)
                         .update("reaction", FieldValue.arrayUnion(reaction))
+                    sendNotification("Reacted "+str+" to your message")
                 } else {
                     val updatedReactions = existingReactions.map {
                         if (it.userId == state.value.userData?.userId) reaction else it
@@ -436,24 +768,97 @@ class ChatViewModel: ViewModel() {
             }
     }
     suspend fun typing(t: Boolean, chatId: String, userId: String) {
-        val chatRef = firestore.collection("chats").document(chatId)
-        val documentSnapshot = chatRef.get().await()
-        val field = when {
-            userId == documentSnapshot.getString("user1.userId") -> "user1.typing"
-            userId == documentSnapshot.getString("user2.userId") -> "user2.typing"
-            else -> return
+        if(chatId!=""){
+            val chatRef = firestore.collection("chats").document(chatId)
+            val documentSnapshot = chatRef.get().await()
+            val field = when {
+                userId == documentSnapshot.getString("user1.userId") -> "user1.typing"
+                userId == documentSnapshot.getString("user2.userId") -> "user2.typing"
+                else -> return
+            }
+            chatRef.update(field, t)
         }
 
-        chatRef.update(field, t)
     }
-    fun deleteMsg(msgIds: List<String>, chatId: String){
-        for (id in msgIds){
-            firestore.collection("chats").document(chatId).collection("message").document(id).delete()
+    fun readAllMessagesInChat(chatId: String) {
+        val messagesCollection = firestore.collection("chats").document(chatId).collection("message")
+        viewModelScope.launch(Dispatchers.IO) {
+            val userDataRef = firestore.collection("users").document(state.value.User2?.userId.toString())
+            val snapshot = userDataRef.get().await()
+            val userData = snapshot.toObject(UserData::class.java)
+            val rr = userData?.pref?.rr ?: true
+            if(state.value.userData?.pref?.rr!! || rr){
+                messagesCollection
+                    .whereNotEqualTo("senderId", state.value.userData?.userId)
+                    .get()
+                    .addOnSuccessListener { querySnapshot ->
+                        for (document in querySnapshot.documents) {
+                            val messageId = document.id
+                            messagesCollection.document(messageId).update("read", true)
+                        }
+                    }
+                    .addOnFailureListener { exception ->
+                        Log.e(TAG, "Error getting messages for chat $chatId: ", exception)
+                    }
+                firestore.collection("chats").document(chatId).get()
+                    .addOnSuccessListener { querySnapshot ->
+                        val userId = querySnapshot.getString("last.senderId")
+                        if (userId != state.value.userData?.userId) {
+                            querySnapshot.reference.update("last.read", true)
+                        }
+                    }
+            }
+            firestore.collection("chats").document(chatId).get()
+                .addOnSuccessListener { querySnapshot ->
+                    val user1Id = querySnapshot.getString("user1.userId")
+                    val user2Id = querySnapshot.getString("user2.userId")
+
+                    if (user1Id == state.value.userData?.userId) {
+                        querySnapshot.reference.update("user2.unread", 0)
+                    }
+                    if (user2Id == state.value.userData?.userId) {
+                        querySnapshot.reference.update("user1.unread", 0)
+                    }
+                }
+
+        }
+
+    }
+    fun deleteMsg(msgIds: List<String>, chatId: String) {
+        for (id in msgIds) {
+            firestore.collection("chats").document(chatId).collection("message")
+                .document(id).get()
+                .addOnSuccessListener { documentSnapshot ->
+                    val isRead = documentSnapshot.getBoolean("read") ?: false
+                    if (isRead) {
+                        firestore.collection("chats").document(chatId).collection("message").document(id).delete()
+                    } else {
+                        firestore.collection("chats").document(chatId).collection("message").document(id).delete()
+                        firestore.collection("chats").document(chatId).get()
+                            .addOnSuccessListener { querySnapshot ->
+                                val user1Id = querySnapshot.getString("user1.userId")
+                                val user2Id = querySnapshot.getString("user2.userId")
+
+                                if (user1Id == state.value.userData?.userId) {
+                                    querySnapshot.reference.update("user1.unread", FieldValue.increment(-1))
+                                }
+                                if (user2Id == state.value.userData?.userId) {
+                                    querySnapshot.reference.update("user2.unread", FieldValue.increment(-1))                    }
+
+                            }
+                    }
+                }
+            if(id==messages[0].msgId){
+                if(messages.size==1){
+                    firestore.collection("chats").document(chatId).update("last", Message(time = null))
+                }
+                else
+                    firestore.collection("chats").document(chatId).update("last", messages[1])
+                }
         }
     }
     fun editMessage(msgId: String, chatId: String, newMsg: String){
             firestore.collection("chats").document(chatId).collection("message").document(msgId).update("content", newMsg)
-
     }
     fun clearChat(chatId: String){
         firestore.collection("chats").document(chatId).collection("message").get()
@@ -493,8 +898,9 @@ class ChatViewModel: ViewModel() {
     fun removeFCMToken(userId: String){
         firestore.collection("users").document(userId).update("token", "")
     }
-    fun sendNotification(msg: String){
-        usersCollection.document(state.value.User2?.userId.toString()).get()
+    fun sendNotification(msg: String, userId: String=""){
+        val user2Id = if(userId!="") userId else state.value.User2?.userId.toString()
+        usersCollection.document(user2Id).get()
             .addOnSuccessListener { documentSnapshot ->
                 if (documentSnapshot.exists()) {
                     val otherUsrToken = documentSnapshot.getString("token").toString()
@@ -518,13 +924,12 @@ class ChatViewModel: ViewModel() {
         val client = OkHttpClient()
         val url = "https://fcm.googleapis.com/fcm/send"
         val body = jsonObj.toString().toRequestBody(json)
-
         val request = Request.Builder()
             .url(url)
             .post(body)
             .header(
                 "Authorization",
-                "Bearer [YOUR_SERVER_KEY]"
+                "[]"
             )
             .build()
 
@@ -541,22 +946,23 @@ class ChatViewModel: ViewModel() {
         })
     }
 
-    fun updateStatus(status: Boolean){
-        println("status:" + status)
-        firestore.collection("chats").get()
-            .addOnSuccessListener { querySnapshot ->
-                for (document in querySnapshot.documents) {
-                    val user1Id = document.getString("user1.userId")
-                    val user2Id = document.getString("user2.userId")
+    fun updateStatus(status: Boolean, userId: String = state.value.userData?.userId.toString(), v: Boolean = false){
+            firestore.collection("chats").get()
+                .addOnSuccessListener { querySnapshot ->
+                    if(state.value.userData?.pref?.online ?: true || v){
+                            for (document in querySnapshot.documents) {
+                                val user1Id = document.getString("user1.userId")
+                                val user2Id = document.getString("user2.userId")
+                                if (user1Id == userId) {
+                                    document.reference.update("user1.status", status)
+                                }
+                                if (user2Id == userId) {
+                                    document.reference.update("user2.status", status)
+                                }
+                            }
+                    }
 
-                    if (user1Id == state.value.userData?.userId) {
-                        document.reference.update("user1.status", status)
-                    }
-                    if (user2Id == state.value.userData?.userId) {
-                        document.reference.update("user2.status", status)
-                    }
                 }
-            }
     }
 
     fun resetState() {
@@ -564,7 +970,7 @@ class ChatViewModel: ViewModel() {
         stories = emptyList()
         chats = emptyList()
     }
-    fun removeL(){
+    fun removeL() {
         storyListener?.remove()
         chatListener?.remove()
         userDataListener?.remove()
@@ -575,10 +981,13 @@ class ChatViewModel: ViewModel() {
     fun hideDialog(){
         _state.update { it.copy( showDialog=false) }
     }
-    fun setSrEmail(email: String){
-        _state.update { it.copy( srEmail = email) }
-    }
     fun setchatUser(usr: ChatUserData, id: String) {
         _state.update { it.copy( User2 = usr, chatId = id ) }
+    }
+    fun dltchatUser() {
+        _state.update { it.copy(chatId = "" ) }
+    }
+    fun setSrEmail(email: String){
+        _state.update { it.copy(srEmail = email ) }
     }
 }

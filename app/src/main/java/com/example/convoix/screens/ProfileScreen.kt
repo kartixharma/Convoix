@@ -101,7 +101,7 @@ fun ProfileScreen(
     )
     fun compressImage(): ByteArray {
         val outputStream = ByteArrayOutputStream()
-        bitmap?.compress(Bitmap.CompressFormat.JPEG, 30, outputStream)
+        bitmap?.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
         return outputStream.toByteArray()
     }
     fun uploadImage(){
@@ -187,16 +187,14 @@ fun ProfileScreen(
                    Icon(imageVector = Icons.Filled.Edit, contentDescription = null,modifier = Modifier.size(20.dp))
                 }
             }
-
         }
-                Text(text = user?.username.toString(),
-                    modifier = Modifier
-                        .offset(y = (-25).dp),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White
-                )
-
+        Text(text = user?.username.toString(),
+            modifier = Modifier
+                .offset(y = (-25).dp),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White
+        )
         Spacer(modifier = Modifier.height(10.dp))
         Text(
             text = user?.email.toString(),
@@ -216,7 +214,6 @@ fun ProfileScreen(
                     color = if (user?.bio.toString() != "") Color.White else Color.LightGray
                 )
             }
-
         Spacer(modifier = Modifier.height(16.dp))
     }
     val brush = Brush.linearGradient(listOf(
@@ -255,7 +252,14 @@ fun ProfileScreen(
             val src = ImageDecoder.createSource(context.contentResolver, it)
             bitmap = ImageDecoder.decodeBitmap(src)
         }
-        StoryPreview(bitmap = bitmap, hideDialog = { imgUri = null }, upload = { uploadImage(); imgUri = null;isLoading=true })
+        StoryPreview(uri = imgUri, hideDialog = { imgUri = null }, upload = {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && it.toString()!="") {
+                val src = ImageDecoder.createSource(context.contentResolver, it!!)
+                bitmap = ImageDecoder.decodeBitmap(src)
+            }
+            uploadImage()
+            imgUri = null
+            isLoading=true })
     }
     AnimatedVisibility(viewImage) {
         View(imageUrl = user?.ppurl.toString(), hideDialog = {viewImage=false})
