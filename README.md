@@ -2,7 +2,7 @@
 
 your streamlined chatting solution. Connect effortlessly and chat with ease. Try it now!.
 
-![](https://imgur.com/kPV3sb0l.png)
+![](https://imgur.com/kPV3sb0.png)
 
 ## Features:
 - Scheduled messaging (new)
